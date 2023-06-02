@@ -1,0 +1,17 @@
+{
+  "name": "michael/php-lexer",
+  "type": "project",
+  "autoload": {
+    "psr-4": {
+      "Lexer\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "Michael Strobel"
+    }
+  ],
+  "require": {
+    "php": ">=8.2"
+  }
+}
