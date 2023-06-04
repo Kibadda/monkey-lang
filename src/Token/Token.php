@@ -1,6 +1,6 @@
 <?php
 
-namespace Lexer\Lib;
+namespace Monkey\Token;
 
 class Token
 {
