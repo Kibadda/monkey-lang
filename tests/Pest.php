@@ -32,9 +32,12 @@ use Monkey\Ast\Expression\IfExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
+use Monkey\Ast\Program;
 use Monkey\Ast\Statement\ExpressionStatement;
 use Monkey\Ast\Statement\LetStatement;
 use Monkey\Ast\Statement\ReturnStatement;
+use Monkey\Lexer\Lexer;
+use Monkey\Parser\Parser;
 
 expect()->extend('toBeLetStatement', function (string $name, $value) {
     expect($this->value)->toBeInstanceOf(LetStatement::class);
@@ -145,6 +148,11 @@ expect()->extend('toBeCallExpression', function ($function, array $arguments) {
     }
 });
 
+// expect()->extend('toEvaluateTo', function ($expected) {
+//     expect($evaluated->type())->toBeInstanceOf($expected[0]);
+//     expect($evaluated->value)->toBe($expected[1]);
+// });
+
 /*
 |--------------------------------------------------------------------------
 | Functions
@@ -156,7 +164,14 @@ expect()->extend('toBeCallExpression', function ($function, array $arguments) {
 |
 */
 
-function something()
+function createProgram(string $input, int $count = 1): Program
 {
-    // ..
+    $lexer = Lexer::new($input);
+    $parser = Parser::new($lexer);
+    $program = $parser->parseProgam();
+
+    expect($parser->errors)->toHaveCount(0);
+    // expect($program->statements)->toHaveCount($count);
+
+    return $program;
 }

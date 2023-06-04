@@ -10,22 +10,8 @@ use Monkey\Ast\Expression\IntegerLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
 use Monkey\Ast\Program;
 use Monkey\Ast\Statement\LetStatement;
-use Monkey\Lexer\Lexer;
-use Monkey\Parser\Parser;
 use Monkey\Token\Token;
 use Monkey\Token\Type;
-
-function createProgram($input): Program
-{
-    $lexer = Lexer::new($input);
-    $parser = Parser::new($lexer);
-    $program = $parser->parseProgam();
-
-    expect($parser->errors)->toHaveCount(0);
-    expect($program->statements)->toHaveCount(1);
-
-    return $program;
-}
 
 it('parses let statements correctly', function ($input, $identifier, $expression) {
     $program = createProgram($input);

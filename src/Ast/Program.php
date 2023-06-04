@@ -2,6 +2,8 @@
 
 namespace Monkey\Ast;
 
+use Monkey\Ast\Statement\Statement;
+
 class Program implements Node
 {
     /** @var Statement[] $statements */

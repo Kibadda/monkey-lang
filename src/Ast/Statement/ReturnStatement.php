@@ -9,7 +9,7 @@ class ReturnStatement implements Statement
 {
     public function __construct(
         public Token $token,
-        public ?Expression $value = null,
+        public Expression $value,
     ) {
     }
 
@@ -24,6 +24,6 @@ class ReturnStatement implements Statement
 
     public function string(): string
     {
-        return "{$this->tokenLiteral()} {$this->value?->string()};";
+        return "{$this->tokenLiteral()} {$this->value->string()};";
     }
 }

@@ -2,6 +2,8 @@
 
 namespace Monkey\Repl;
 
+use Monkey\Evaluator\Environment;
+use Monkey\Evaluator\Evaluator;
 use Monkey\Lexer\Lexer;
 use Monkey\Parser\Parser;
 
@@ -22,7 +24,10 @@ class Repl
 
     public static function start()
     {
+        $environment = Environment::new();
+
         fwrite(STDOUT, "Hello! This ist the Monkey programming language!\nFeel free to type in commands\n");
+
         while (true) {
             fwrite(STDOUT, self::PROMPT);
             $line = fgets(STDIN);
@@ -46,7 +51,11 @@ class Repl
                 continue;
             }
 
-            fwrite(STDOUT, "{$program->string()}\n");
+            $evaluated = Evaluator::new($environment)->eval($program);
+
+            if (!is_null($evaluated)) {
+                fwrite(STDOUT, "{$evaluated->inspect()}\n");
+            }
         }
     }
 }

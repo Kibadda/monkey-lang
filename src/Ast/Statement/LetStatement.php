@@ -11,7 +11,7 @@ class LetStatement implements Statement
     public function __construct(
         public Token $token,
         public Identifier $name,
-        public ?Expression $value = null,
+        public Expression $value,
     ) {
     }
 
@@ -26,6 +26,6 @@ class LetStatement implements Statement
 
     public function string(): string
     {
-        return "{$this->tokenLiteral()} {$this->name->string()} = {$this->value?->string()};";
+        return "{$this->tokenLiteral()} {$this->name->string()} = {$this->value->string()};";
     }
 }
