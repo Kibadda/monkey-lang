@@ -2,7 +2,7 @@
 
 namespace Monkey\Ast;
 
-class Program
+class Program implements Node
 {
     /** @var Statement[] $statements */
     public array $statements;
