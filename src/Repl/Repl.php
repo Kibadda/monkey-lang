@@ -3,11 +3,22 @@
 namespace Monkey\Repl;
 
 use Monkey\Lexer\Lexer;
-use Monkey\Lib\Type;
+use Monkey\Parser\Parser;
 
 class Repl
 {
     private const PROMPT = '>> ';
+    private const MONKEY_FACE = '                 __,__
+        .--.  .-"     "-.  .--.
+       / .. \/  .-. .-.  \/ .. \
+      | |  `|  /   Y   \  |´  | |
+      | \   \  \ 0 | 0 /  /   / |
+       \ `- ,\.-"""""""-./, -´ /
+        ``-´ /_   ^ ^   _\ `-´´
+            |  \._   _./  |
+            \   \ `~´ /   /
+             `._ `-=-´ _.´
+                `-----´';
 
     public static function start()
     {
@@ -21,10 +32,21 @@ class Repl
             }
 
             $lexer = Lexer::new($line);
+            $parser = Parser::new($lexer);
 
-            while (($token = $lexer->nextToken())->type != Type::EOF) {
-                fwrite(STDOUT, "{$token->type->name}: {$token->literal}\n");
+            $program = $parser->parseProgam();
+
+            if (count($parser->errors) > 0) {
+                fwrite(STDOUT, self::MONKEY_FACE);
+                fwrite(STDOUT, "\nWoops! We ran into some monkey business here!\n");
+                fwrite(STDOUT, " parser errors:\n");
+                foreach ($parser->errors as $error) {
+                    fwrite(STDOUT, "\t{$error}\n");
+                }
+                continue;
             }
+
+            fwrite(STDOUT, "{$program->string()}\n");
         }
     }
 }

@@ -3,12 +3,16 @@
 namespace Monkey\Parser;
 
 use Monkey\Ast\Expression\Boolean;
+use Monkey\Ast\Expression\CallExpression;
 use Monkey\Ast\Expression\Expression;
+use Monkey\Ast\Expression\FunctionLiteral;
 use Monkey\Ast\Expression\Identifier;
+use Monkey\Ast\Expression\IfExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
 use Monkey\Ast\Program;
+use Monkey\Ast\Statement\BlockStatement;
 use Monkey\Ast\Statement\ExpressionStatement;
 use Monkey\Ast\Statement\LetStatement;
 use Monkey\Ast\Statement\ReturnStatement;
@@ -81,24 +85,50 @@ class Parser
             return null;
         }
 
-        while (!$this->curTokenIs(Type::SEMICOLON)) {
+        $this->nextToken();
+
+        $value = $this->parseExpression(Precedence::LOWEST);
+
+        if ($this->peekTokenIs(Type::SEMICOLON)) {
             $this->nextToken();
         }
 
-        return new LetStatement($token, $name);
+        return new LetStatement($token, $name, $value);
     }
 
     private function parseReturnStatement(): ReturnStatement
     {
+        return new ReturnStatement(
+            $this->curToken,
+            call_user_func(function () {
+                $this->nextToken();
+                $value = $this->parseExpression(Precedence::LOWEST);
+                if ($this->peekTokenIs(Type::SEMICOLON)) {
+                    $this->nextToken();
+                }
+                return $value;
+            }),
+        );
+    }
+
+    private function parseBlockStatement(): BlockStatement
+    {
         $token = $this->curToken;
+        $statements = [];
 
         $this->nextToken();
 
-        while (!$this->curTokenIs(Type::SEMICOLON)) {
+        while (!$this->curTokenIs(Type::RBRACE) && !$this->curTokenIs(Type::EOF)) {
+            $stmt = $this->parseStatement();
+
+            if (!is_null($stmt)) {
+                $statements[] = $stmt;
+            }
+
             $this->nextToken();
         }
 
-        return new ReturnStatement($token);
+        return new BlockStatement($token, $statements);
     }
 
     private function parseExpressionStatement(): ExpressionStatement
@@ -122,6 +152,9 @@ class Parser
             Type::MINUS => $this->parsePrefixExpression(),
             Type::TRUE,
             Type::FALSE => $this->parseBoolean(),
+            Type::LPAREN => $this->parseGroupedExpression(),
+            Type::IF => $this->parseIfExpression(),
+            Type::FUNCTION => $this->parseFunctionLiteral(),
             default => null,
         };
 
@@ -142,6 +175,10 @@ class Parser
                 Type::GT => call_user_func(function () use ($left) {
                     $this->nextToken();
                     return $this->parseInfixExpression($left);
+                }),
+                Type::LPAREN => call_user_func(function () use ($left) {
+                    $this->nextToken();
+                    return $this->parseCallExpression($left);
                 }),
                 default => null,
             };
@@ -180,6 +217,132 @@ class Parser
                 return $this->parseExpression($precedence);
             }),
         );
+    }
+
+    private function parseCallExpression(Expression $function): CallExpression
+    {
+        return new CallExpression(
+            $this->curToken,
+            $function,
+            $this->parseCallArguments(),
+        );
+    }
+
+    private function parseCallArguments(): ?array
+    {
+        if ($this->peekTokenIs(Type::RPAREN)) {
+            $this->nextToken();
+            return [];
+        }
+
+        $this->nextToken();
+
+        $arguments = [
+            $this->parseExpression(Precedence::LOWEST),
+        ];
+
+        while ($this->peekTokenIs(Type::COMMA)) {
+            $this->nextToken();
+            $this->nextToken();
+            $arguments[] = $this->parseExpression(Precedence::LOWEST);
+        }
+
+        if (!$this->expectPeek(Type::RPAREN)) {
+            return null;
+        }
+
+        return $arguments;
+    }
+
+    private function parseGroupedExpression(): ?Expression
+    {
+        $this->nextToken();
+
+        $expression = $this->parseExpression(Precedence::LOWEST);
+
+        if (!$this->expectPeek(Type::RPAREN)) {
+            return null;
+        }
+
+        return $expression;
+    }
+
+    private function parseIfExpression(): ?IfExpression
+    {
+        $token = $this->curToken;
+
+        if (!$this->expectPeek(Type::LPAREN)) {
+            return null;
+        }
+
+        $this->nextToken();
+        $condition = $this->parseExpression(Precedence::LOWEST);
+
+        if (!$this->expectPeek(Type::RPAREN)) {
+            return null;
+        }
+
+        if (!$this->expectPeek(Type::LBRACE)) {
+            return null;
+        }
+
+        $consequence = $this->parseBlockStatement();
+
+        $alternative = null;
+        if ($this->peekTokenIs(Type::ELSE)) {
+            $this->nextToken();
+
+            if (!$this->expectPeek(Type::LBRACE)) {
+                return null;
+            }
+
+            $alternative = $this->parseBlockStatement();
+        }
+
+        return new IfExpression($token, $condition, $consequence, $alternative);
+    }
+
+    private function parseFunctionLiteral(): ?FunctionLiteral
+    {
+        $token = $this->curToken;
+
+        if (!$this->expectPeek(Type::LPAREN)) {
+            return null;
+        }
+
+        $parameters = $this->parseFunctionParameters();
+
+        if (!$this->expectPeek(Type::LBRACE)) {
+            return null;
+        }
+
+        return new FunctionLiteral($token, $parameters, $this->parseBlockStatement());
+    }
+
+    private function parseFunctionParameters(): ?array
+    {
+        if ($this->peekTokenIs(Type::RPAREN)) {
+            $this->nextToken();
+            return [];
+        }
+
+        $this->nextToken();
+
+        $parameters = [
+            new Identifier($this->curToken, $this->curToken->literal),
+        ];
+
+        while ($this->peekTokenIs(Type::COMMA)) {
+            $this->nextToken();
+            $this->nextToken();
+            $parameters[] = new Identifier($this->curToken, $this->curToken->literal);
+        }
+
+        if (!$this->expectPeek(Type::RPAREN)) {
+            return null;
+        }
+
+        return $parameters;
     }
 
     private function parseIdentifier(): Identifier

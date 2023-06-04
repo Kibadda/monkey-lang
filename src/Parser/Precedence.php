@@ -25,6 +25,7 @@ enum Precedence: int
             Type::MINUS => self::SUM,
             Type::SLASH => self::PRODUCT,
             Type::ASTERISK => self::PRODUCT,
+            Type::LPAREN => self::CALL,
             default => self::LOWEST,
         };
     }
