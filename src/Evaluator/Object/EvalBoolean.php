@@ -2,8 +2,10 @@
 
 namespace Monkey\Evaluator\Object;
 
-class EvalBoolean implements EvalObject
+class EvalBoolean implements EvalObject, HashKey
 {
+    use HasHashKey;
+
     public function __construct(
         public bool $value,
     ) {
@@ -17,10 +19,5 @@ class EvalBoolean implements EvalObject
     public function inspect(): string
     {
         return $this->value ? 'true' : 'false';
-    }
-
-    public function hashKey(): string
-    {
-        return "{$this->type()->name}:{$this->inspect()}";
     }
 }

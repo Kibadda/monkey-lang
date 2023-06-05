@@ -2,8 +2,10 @@
 
 namespace Monkey\Evaluator\Object;
 
-class EvalInteger implements EvalObject
+class EvalInteger implements EvalObject, HashKey
 {
+    use HasHashKey;
+
     public function __construct(
         public int $value,
     ) {
@@ -17,10 +19,5 @@ class EvalInteger implements EvalObject
     public function inspect(): string
     {
         return "{$this->value}";
-    }
-
-    public function hashKey(): string
-    {
-        return "{$this->type()->name}:{$this->inspect()}";
     }
 }

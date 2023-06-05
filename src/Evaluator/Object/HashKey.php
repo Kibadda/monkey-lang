@@ -2,10 +2,7 @@
 
 namespace Monkey\Evaluator\Object;
 
-trait Hashkey
+interface HashKey
 {
-    public function hashKey(): string
-    {
-        return "{$this->type()->name}:{$this->inspect()}";
-    }
+    public function hashKey(): string;
 }

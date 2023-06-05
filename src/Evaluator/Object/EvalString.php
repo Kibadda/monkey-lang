@@ -2,9 +2,9 @@
 
 namespace Monkey\Evaluator\Object;
 
-class EvalString implements EvalObject
+class EvalString implements EvalObject, HashKey
 {
-    // use Hashkey;
+    use HasHashKey;
 
     public function __construct(
         public string $value,
@@ -19,10 +19,5 @@ class EvalString implements EvalObject
     public function inspect(): string
     {
         return $this->value;
-    }
-
-    public function hashKey(): string
-    {
-        return "{$this->type()->name}:{$this->inspect()}";
     }
 }

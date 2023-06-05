@@ -33,6 +33,7 @@ use Monkey\Evaluator\Object\EvalObject;
 use Monkey\Evaluator\Object\EvalReturn;
 use Monkey\Evaluator\Object\EvalString;
 use Monkey\Evaluator\Object\EvalType;
+use Monkey\Evaluator\Object\HashKey;
 
 class Evaluator
 {
@@ -239,7 +240,7 @@ class Evaluator
                     }
 
 
-                    if (!$key instanceof EvalInteger && !$key instanceof EvalString && !$key instanceof EvalBoolean) {
+                    if (!$key instanceof HashKey) {
                         return new EvalError("unusable as hash key: {$key->type()->name}");
                     }
 
@@ -457,7 +458,7 @@ class Evaluator
                 return $left->elements[$i];
             }),
             $left->type() == EvalType::HASH => call_user_func(function () use ($left, $index) {
-                if (!$index instanceof EvalInteger && !$index instanceof EvalString && !$index instanceof EvalBoolean) {
+                if (!$index instanceof HashKey) {
                     return new EvalError("unusable as hash key: {$index->type()->name}");
                 }
 
