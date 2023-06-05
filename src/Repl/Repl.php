@@ -26,7 +26,7 @@ class Repl
     {
         $environment = Environment::new();
 
-        // TODO: implement array keys?
+        // TODO: implement arrow keys?
         // $commands = [];
         // $index = 0;
 
