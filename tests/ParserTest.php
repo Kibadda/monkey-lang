@@ -10,6 +10,7 @@ use Monkey\Ast\Expression\IfExpression;
 use Monkey\Ast\Expression\IndexExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
+use Monkey\Ast\Expression\MacroLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
 use Monkey\Ast\Expression\StringLiteral;
 use Monkey\Ast\Program;
@@ -235,3 +236,17 @@ it('parses hash literals', function ($input, $pairs) {
         ],
     ],
 ]);
+
+it('parses macros', function () {
+    $program = createProgram('macro(x, y) { x + y; };');
+    expect($program->statements[0])->toBeExpressionStatement(
+        MacroLiteral::class,
+        [
+            [Identifier::class, 'x'],
+            [Identifier::class, 'y'],
+        ],
+        [
+            [InfixExpression::class, [Identifier::class, 'x'], '+', [Identifier::class, 'y']],
+        ],
+    );
+});

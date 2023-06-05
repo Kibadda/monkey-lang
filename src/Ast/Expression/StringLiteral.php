@@ -2,10 +2,13 @@
 
 namespace Monkey\Ast\Expression;
 
+use Monkey\Ast\Modify;
 use Monkey\Token\Token;
 
 class StringLiteral implements Expression
 {
+    use Modify;
+
     public function __construct(
         public Token $token,
         public string $value,

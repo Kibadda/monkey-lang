@@ -43,4 +43,11 @@ class Environment
         $this->store[$name] = $evalObject;
         return $evalObject;
     }
+
+    public function extend(Environment $environment)
+    {
+        foreach ($environment->store as $key => $evalObject) {
+            $this->set($key, $evalObject);
+        }
+    }
 }

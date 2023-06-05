@@ -6,6 +6,8 @@ use Monkey\Ast\Statement\Statement;
 
 class Program implements Node
 {
+    use Modify;
+
     /** @var Statement[] $statements */
     public array $statements;
 

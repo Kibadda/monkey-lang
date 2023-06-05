@@ -8,7 +8,9 @@ use Monkey\Evaluator\Object\EvalError;
 use Monkey\Evaluator\Object\EvalFunction;
 use Monkey\Evaluator\Object\EvalHash;
 use Monkey\Evaluator\Object\EvalInteger;
+use Monkey\Evaluator\Object\EvalMacro;
 use Monkey\Evaluator\Object\EvalNull;
+use Monkey\Evaluator\Object\EvalQuote;
 use Monkey\Evaluator\Object\EvalString;
 
 it('evaluates', function ($input, $eval, $value) {
@@ -192,4 +194,90 @@ it('evaluates hash index', function ($input, $value) {
     ['{5: 5}[5]', 5],
     ['{true: 5}[true]', 5],
     ['{false: 5}[false]', 5],
+]);
+
+it('evaluates quote', function ($input, $node) {
+    $program = createProgram($input);
+    $environment = Environment::new();
+
+    $evaluated = Evaluator::new($environment)->eval($program);
+    expect($evaluated)->toBeInstanceOf(EvalQuote::class);
+    expect($evaluated->node)->not->toBeNull();
+    expect($evaluated->node->string())->toBe($node);
+})->with([
+    ['quote(5)', '5'],
+    ['quote(5 + 8)', '(5 + 8)'],
+    ['quote(foobar)', 'foobar'],
+    ['quote(foobar + barfoo)', '(foobar + barfoo)'],
+    ['quote(unquote(4))', '4'],
+    ['quote(unquote(4 + 4))', '8'],
+    ['quote(8 + unquote(4 + 4))', '(8 + 8)'],
+    ['quote(unquote(4 + 4) + 8)', '(8 + 8)'],
+    ['let foobar = 8; quote(foobar)', 'foobar'],
+    ['let foobar = 8; quote(unquote(foobar))', '8'],
+    ['quote(unquote(true))', 'true'],
+    ['quote(unquote(true == false))', 'false'],
+    ['quote(unquote(quote(4 + 4)))', '(4 + 4)'],
+    ['let quoted = quote(4 + 4); quote(unquote(4 + 4) + unquote(quoted))', '(8 + (4 + 4))']
+]);
+
+it('defines macros', function () {
+    $program = createProgram('
+        let number = 1;
+        let function  = fn(x, y) { x + y; };
+        let mymacro = macro(x, y) { x + y; };
+    ');
+    $environment = Evaluator::defineMacros($program);
+
+    expect($program->statements)->toHaveCount(2);
+    expect($environment->get('number'))->toBeNull();
+    expect($environment->get('function'))->toBeNull();
+
+    /** @var EvalMacro $macro */
+    $macro = $environment->get('mymacro');
+    expect($environment->get('mymacro'))->not->toBeNull();
+    expect($macro)->toBeInstanceOf(EvalMacro::class);
+    expect($macro->parameters)->toHaveCount(2);
+    expect($macro->parameters[0]->string())->toBe('x');
+    expect($macro->parameters[1]->string())->toBe('y');
+    expect($macro->body->string())->toBe('(x + y)');
+});
+
+it('expands macros', function ($input, $expected) {
+    $expected = createProgram($expected);
+    $program = createProgram($input);
+    $environment = Evaluator::defineMacros($program);
+
+    $expanded = Evaluator::expandMacros($program, $environment);
+
+    expect($expanded->string())->toBe($expected->string());
+})->with([
+    [
+        '
+        let infixExpression = macro() { quote(1 + 2); };
+        infixExpression();
+        ',
+        '(1 + 2)',
+    ],
+    [
+        '
+        let reverse = macro(a, b) { quote(unquote(b) - unquote(a)); };
+        reverse(2 + 2, 10 - 5);
+        ',
+        '(10 - 5) - (2 + 2)',
+    ],
+    [
+        '
+        let unless = macro(condition, consequence, alternative) {
+            quote(if (!(unquote(condition))) {
+                unquote(consequence);
+            } else {
+                unquote(alternative);
+            });
+        };
+
+        unless(10 > 5, puts("not greater"), puts("greater"));
+        ',
+        'if (!(10 > 5)) { puts("not greater") } else { puts("greater") }',
+    ]
 ]);

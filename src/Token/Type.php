@@ -41,6 +41,8 @@ enum Type
     case ELSE;
     case RETURN;
 
+    case MACRO;
+
     public static function lookup(string $identifier): self
     {
         return match ($identifier) {
@@ -51,6 +53,7 @@ enum Type
             'if' => self::IF,
             'else' => self::ELSE,
             'return' => self::RETURN,
+            'macro' => self::MACRO,
             default => self::IDENTIFIER,
         };
     }

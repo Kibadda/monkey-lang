@@ -6,10 +6,16 @@ use Monkey\Evaluator\Evaluator;
 use Monkey\Lexer\Lexer;
 use Monkey\Parser\Parser;
 
-$lexer = Lexer::new('{"one": 1, true: 2, 1: 3}');
+$lexer = Lexer::new('
+    let number = 1;
+    let function  = fn(x, y) { x + y; };
+    let mymacro = macro(x, y) { x + y; };
+');
 $parser = Parser::new($lexer);
 $program = $parser->parseProgam();
-$environment = Environment::new();
 
-$eval = Evaluator::new($environment)->eval($program);
-print_r($eval);
+print_r($program);
+
+$env = Evaluator::defineMacros($program);
+
+print_r($env);

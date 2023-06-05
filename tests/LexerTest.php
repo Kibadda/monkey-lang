@@ -32,6 +32,8 @@ it('tokenizes input', function () {
         [1, 2];
 
         {"foo": "bar"};
+
+        macro(x, y) { x + y; };
     ';
 
     $tests = [
@@ -122,6 +124,19 @@ it('tokenizes input', function () {
         new Token(Type::STRING, 'foo'),
         new Token(Type::COLON, ':'),
         new Token(Type::STRING, 'bar'),
+        new Token(Type::RBRACE, '}'),
+        new Token(Type::SEMICOLON, ';'),
+        new Token(Type::MACRO, 'macro'),
+        new Token(Type::LPAREN, '('),
+        new Token(Type::IDENTIFIER, 'x'),
+        new Token(Type::COMMA, ','),
+        new Token(Type::IDENTIFIER, 'y'),
+        new Token(Type::RPAREN, ')'),
+        new Token(Type::LBRACE, '{'),
+        new Token(Type::IDENTIFIER, 'x'),
+        new Token(Type::PLUS, '+'),
+        new Token(Type::IDENTIFIER, 'y'),
+        new Token(Type::SEMICOLON, ';'),
         new Token(Type::RBRACE, '}'),
         new Token(Type::SEMICOLON, ';'),
         new Token(Type::EOF, ''),

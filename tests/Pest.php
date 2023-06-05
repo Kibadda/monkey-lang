@@ -34,6 +34,7 @@ use Monkey\Ast\Expression\IfExpression;
 use Monkey\Ast\Expression\IndexExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
+use Monkey\Ast\Expression\MacroLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
 use Monkey\Ast\Expression\StringLiteral;
 use Monkey\Ast\Program;
@@ -75,6 +76,7 @@ expect()->extend('toBeExpression', function (string $expression, ...$args) {
         FunctionLiteral::class => expect($this->value)->toBeFunctionLiteral(...$args),
         CallExpression::class => expect($this->value)->toBeCallExpression(...$args),
         IndexExpression::class => expect($this->value)->toBeIndexExpression(...$args),
+        MacroLiteral::class => expect($this->value)->toBeMacroLiteral(...$args),
     };
 });
 
@@ -160,6 +162,18 @@ expect()->extend('toBeIfExpression', function ($condition, array $consequences, 
 
 expect()->extend('toBeFunctionLiteral', function (array $parameters, array $body) {
     expect($this->value)->toBeInstanceOf(FunctionLiteral::class);
+    expect($this->value->parameters)->toHaveCount(count($parameters));
+    foreach ($this->value->parameters as $i => $parameter) {
+        expect($parameter)->toBeLiteralExpression(...$parameters[$i]);
+    }
+    expect($this->value->body->statements)->toHaveCount(count($body));
+    foreach ($this->value->body->statements as $i => $statement) {
+        expect($statement)->toBeExpressionStatement(...$body[$i]);
+    }
+});
+
+expect()->extend('toBeMacroLiteral', function (array $parameters, array $body) {
+    expect($this->value)->toBeInstanceOf(MacroLiteral::class);
     expect($this->value->parameters)->toHaveCount(count($parameters));
     foreach ($this->value->parameters as $i => $parameter) {
         expect($parameter)->toBeLiteralExpression(...$parameters[$i]);

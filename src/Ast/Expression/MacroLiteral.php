@@ -6,15 +6,17 @@ use Monkey\Ast\Modify;
 use Monkey\Ast\Statement\BlockStatement;
 use Monkey\Token\Token;
 
-class IfExpression implements Expression
+class MacroLiteral implements Expression
 {
     use Modify;
 
+    /**
+     * @param Identifier[] $parameters
+     */
     public function __construct(
         public ?Token $token,
-        public Expression $condition,
-        public BlockStatement $consequence,
-        public ?BlockStatement $alternative = null,
+        public array $parameters,
+        public BlockStatement $body,
     ) {
     }
 
@@ -29,6 +31,12 @@ class IfExpression implements Expression
 
     public function string(): string
     {
-        return "if {$this->condition->string()} {$this->consequence->string()}" . ($this->alternative ? " else {$this->alternative->string()}" : '');
+        $parameters = [];
+
+        foreach ($this->parameters as $parameter) {
+            $parameters[] = $parameter->string();
+        }
+
+        return "{$this->tokenLiteral()}(" . implode(', ', $parameters) . ") {$this->body->string()}";
     }
 }

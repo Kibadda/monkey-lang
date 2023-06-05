@@ -55,7 +55,10 @@ class Repl
                 continue;
             }
 
-            $evaluated = Evaluator::new($environment)->eval($program);
+            $environment->extend(Evaluator::defineMacros($program));
+            $expanded = Evaluator::expandMacros($program, $environment);
+
+            $evaluated = Evaluator::new($environment)->eval($expanded);
 
             if (!is_null($evaluated)) {
                 fwrite(STDOUT, "{$evaluated->inspect()}\n");

@@ -2,15 +2,18 @@
 
 namespace Monkey\Ast\Expression;
 
+use Monkey\Ast\Modify;
 use Monkey\Token\Token;
 
 class ArrayLiteral implements Expression
 {
+    use Modify;
+
     /**
      * @param Expression[] $elements
      */
     public function __construct(
-        public Token $token,
+        public ?Token $token,
         public array $elements,
     ) {
     }

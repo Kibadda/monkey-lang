@@ -2,12 +2,15 @@
 
 namespace Monkey\Ast\Expression;
 
+use Monkey\Ast\Modify;
 use Monkey\Token\Token;
 
 class InfixExpression implements Expression
 {
+    use Modify;
+
     public function __construct(
-        public Token $token,
+        public ?Token $token,
         public Expression $left,
         public string $operator,
         public Expression $right,

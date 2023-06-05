@@ -13,6 +13,7 @@ use Monkey\Ast\Expression\IfExpression;
 use Monkey\Ast\Expression\IndexExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
+use Monkey\Ast\Expression\MacroLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
 use Monkey\Ast\Expression\StringLiteral;
 use Monkey\Ast\Program;
@@ -162,6 +163,7 @@ class Parser
             Type::STRING => $this->parseStringLiteral(),
             Type::LBRACKET => $this->parseArrayLiteral(),
             Type::LBRACE => $this->parseHashLiteral(),
+            Type::MACRO => $this->parseMacroLiteral(),
             default => null,
         };
 
@@ -316,6 +318,23 @@ class Parser
         }
 
         return new FunctionLiteral($token, $parameters, $this->parseBlockStatement());
+    }
+
+    private function parseMacroLiteral(): ?MacroLiteral
+    {
+        $token = $this->curToken;
+
+        if (!$this->expectPeek(Type::LPAREN)) {
+            return null;
+        }
+
+        $parameters = $this->parseFunctionParameters();
+
+        if (is_null($parameters) || !$this->expectPeek(Type::LBRACE)) {
+            return null;
+        }
+
+        return new MacroLiteral($token, $parameters, $this->parseBlockStatement());
     }
 
     private function parseFunctionParameters(): ?array

@@ -2,6 +2,7 @@
 
 namespace Monkey\Evaluator;
 
+use Error;
 use Monkey\Ast\Expression\ArrayLiteral;
 use Monkey\Ast\Expression\Boolean;
 use Monkey\Ast\Expression\CallExpression;
@@ -13,6 +14,7 @@ use Monkey\Ast\Expression\IfExpression;
 use Monkey\Ast\Expression\IndexExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
+use Monkey\Ast\Expression\MacroLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
 use Monkey\Ast\Expression\StringLiteral;
 use Monkey\Ast\Node;
@@ -28,12 +30,16 @@ use Monkey\Evaluator\Object\EvalError;
 use Monkey\Evaluator\Object\EvalFunction;
 use Monkey\Evaluator\Object\EvalHash;
 use Monkey\Evaluator\Object\EvalInteger;
+use Monkey\Evaluator\Object\EvalMacro;
 use Monkey\Evaluator\Object\EvalNull;
 use Monkey\Evaluator\Object\EvalObject;
+use Monkey\Evaluator\Object\EvalQuote;
 use Monkey\Evaluator\Object\EvalReturn;
 use Monkey\Evaluator\Object\EvalString;
 use Monkey\Evaluator\Object\EvalType;
 use Monkey\Evaluator\Object\HashKey;
+use Monkey\Token\Token;
+use Monkey\Token\Type;
 
 class Evaluator
 {
@@ -125,6 +131,77 @@ class Evaluator
         return new self($environment, $singletons, $builtins);
     }
 
+    public static function defineMacros(Program $program): Environment
+    {
+        $env = Environment::new();
+        $definitions = [];
+
+        foreach ($program->statements as $i => $statement) {
+            if (!$statement instanceof LetStatement) {
+                continue;
+            }
+
+            if (!$statement->value instanceof MacroLiteral) {
+                continue;
+            }
+
+            $env->set($statement->name->value, new EvalMacro(
+                $statement->value->parameters,
+                $statement->value->body,
+                $env,
+            ));
+
+            $definitions[] = $i;
+        }
+
+        for ($i = count($definitions) - 1; $i >= 0; $i--) {
+            array_splice($program->statements, $i, 1);
+        }
+
+        return $env;
+    }
+
+    public static function expandMacros(Program $program, Environment $environment): Node
+    {
+        return $program->modify(function (Node $node) use ($environment): Node {
+            if (!$node instanceof CallExpression) {
+                return $node;
+            }
+
+            if (!$node->function instanceof Identifier) {
+                return $node;
+            }
+
+            $macro = $environment->get($node->function->value);
+            if (empty($macro)) {
+                return $node;
+            }
+
+            if (!$macro instanceof EvalMacro) {
+                return $node;
+            }
+
+            $arguments = [];
+            foreach ($node->arguments as $argument) {
+                $arguments[] = new EvalQuote($argument);
+            }
+
+            $extended = Environment::closed($macro->environment);
+
+            foreach ($macro->parameters as $i => $parameter) {
+                $extended->set($parameter->value, $arguments[$i]);
+            }
+
+            $evaluated = self::new($extended)->eval($macro->body);
+
+            if (!$evaluated instanceof EvalQuote) {
+                throw new Error('we only support returning AST-nodes from macros');
+            }
+
+            return $evaluated->node;
+        });
+    }
+
     private function __construct(
         private Environment $environment,
         private array $singletons,
@@ -191,6 +268,10 @@ class Evaluator
                 return new EvalFunction($parameters, $body, $this->environment);
             }),
             CallExpression::class => call_user_func(function () use ($node) {
+                if ($node->function->tokenLiteral() == 'quote') {
+                    return new EvalQuote($this->evalUnquoteCalls($node->arguments[0]));
+                }
+
                 $function = $this->eval($node->function);
 
                 if ($this->isError($function)) {
@@ -469,6 +550,45 @@ class Evaluator
                 return $left->pairs[$index->hashKey()][1];
             }),
             default => new EvalError("index operator not supported: {$left->type()->name}"),
+        };
+    }
+
+    private function evalUnquoteCalls(Node $node): Node
+    {
+        return $node->modify(function (Node $node): Node {
+            if (!$this->isUnquotedCall($node)) {
+                return $node;
+            }
+
+            if (!$node instanceof CallExpression) {
+                return $node;
+            }
+
+            if (count($node->arguments) != 1) {
+                return $node;
+            }
+
+            $unquoted = $this->eval($node->arguments[0]);
+            return $this->convertObjectToAstNode($unquoted);
+        });
+    }
+
+    private function isUnquotedCall(Node $node): bool
+    {
+        if ($node instanceof CallExpression) {
+            return $node->function->tokenLiteral() == 'unquote';
+        }
+
+        return false;
+    }
+
+    private function convertObjectToAstNode(EvalObject $evalObject): ?Node
+    {
+        return match ($evalObject::class) {
+            EvalInteger::class => new IntegerLiteral(new Token(Type::INT, "{$evalObject->value}"), $evalObject->value, $evalObject->value),
+            EvalBoolean::class => new Boolean($evalObject->value ? new Token(Type::TRUE, 'true') : new Token(Type::FALSE, 'false'), $evalObject->value),
+            EvalQuote::class => $evalObject->node,
+            default => null,
         };
     }
 }

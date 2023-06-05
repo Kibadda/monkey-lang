@@ -4,13 +4,16 @@ namespace Monkey\Ast\Statement;
 
 use Monkey\Ast\Expression\Expression;
 use Monkey\Ast\Expression\Identifier;
+use Monkey\Ast\Modify;
 use Monkey\Token\Token;
 
 class LetStatement implements Statement
 {
+    use Modify;
+
     public function __construct(
-        public Token $token,
-        public Identifier $name,
+        public ?Token $token,
+        public ?Identifier $name,
         public Expression $value,
     ) {
     }

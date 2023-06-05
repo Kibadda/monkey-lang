@@ -2,16 +2,19 @@
 
 namespace Monkey\Ast\Expression;
 
+use Monkey\Ast\Modify;
 use Monkey\Ast\Statement\BlockStatement;
 use Monkey\Token\Token;
 
 class FunctionLiteral implements Expression
 {
+    use Modify;
+
     /**
      * @param Identifier[] $parameters
      */
     public function __construct(
-        public Token $token,
+        public ?Token $token,
         public array $parameters,
         public BlockStatement $body,
     ) {

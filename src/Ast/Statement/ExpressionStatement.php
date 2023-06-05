@@ -3,12 +3,15 @@
 namespace Monkey\Ast\Statement;
 
 use Monkey\Ast\Expression\Expression;
+use Monkey\Ast\Modify;
 use Monkey\Token\Token;
 
 class ExpressionStatement implements Statement
 {
+    use Modify;
+
     public function __construct(
-        public Token $token,
+        public ?Token $token = null,
         public ?Expression $value = null,
     ) {
     }

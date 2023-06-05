@@ -14,4 +14,6 @@ enum EvalType
     case BUILTIN;
     case ARRAY;
     case HASH;
+    case QUOTE;
+    case MACRO;
 }

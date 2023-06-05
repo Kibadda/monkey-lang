@@ -2,16 +2,18 @@
 
 namespace Monkey\Ast\Statement;
 
+use Monkey\Ast\Modify;
 use Monkey\Token\Token;
 
 class BlockStatement implements Statement
 {
+    use Modify;
 
     /**
      * @param Statement[] $statements
      */
     public function __construct(
-        public Token $token,
+        public ?Token $token,
         public array $statements,
     ) {
     }

@@ -2,12 +2,15 @@
 
 namespace Monkey\Ast\Expression;
 
+use Monkey\Ast\Modify;
 use Monkey\Token\Token;
 
 class PrefixExpression implements Expression
 {
+    use Modify;
+
     public function __construct(
-        public Token $token,
+        public ?Token $token,
         public string $operator,
         public Expression $right,
     ) {
