@@ -13,6 +13,7 @@ enum Precedence: int
     case PRODUCT = 4;
     case PREFIX = 5;
     case CALL = 6;
+    case INDEX = 7;
 
     public static function fromType(Type $type): self
     {
@@ -26,6 +27,7 @@ enum Precedence: int
             Type::SLASH => self::PRODUCT,
             Type::ASTERISK => self::PRODUCT,
             Type::LPAREN => self::CALL,
+            Type::LBRACKET => self::INDEX,
             default => self::LOWEST,
         };
     }

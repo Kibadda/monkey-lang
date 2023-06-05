@@ -19,12 +19,19 @@ it('tokenizes input', function () {
             return true;
         } else {
             return false;
-        }
+        };
 
         10 == 10;
         10 != 9;
         
         !((5 + 5) == 10);
+
+        "foobar";
+        "foo bar";
+
+        [1, 2];
+
+        {"foo": "bar"};
     ';
 
     $tests = [
@@ -81,6 +88,7 @@ it('tokenizes input', function () {
         new Token(Type::FALSE, 'false'),
         new Token(Type::SEMICOLON, ';'),
         new Token(Type::RBRACE, '}'),
+        new Token(Type::SEMICOLON, ';'),
         new Token(Type::INT, '10'),
         new Token(Type::EQ, '=='),
         new Token(Type::INT, '10'),
@@ -99,6 +107,22 @@ it('tokenizes input', function () {
         new Token(Type::EQ, '=='),
         new Token(Type::INT, '10'),
         new Token(Type::RPAREN, ')'),
+        new Token(Type::SEMICOLON, ';'),
+        new Token(Type::STRING, 'foobar'),
+        new Token(Type::SEMICOLON, ';'),
+        new Token(Type::STRING, 'foo bar'),
+        new Token(Type::SEMICOLON, ';'),
+        new Token(Type::LBRACKET, '['),
+        new Token(Type::INT, '1'),
+        new Token(Type::COMMA, ','),
+        new Token(Type::INT, '2'),
+        new Token(Type::RBRACKET, ']'),
+        new Token(Type::SEMICOLON, ';'),
+        new Token(Type::LBRACE, '{'),
+        new Token(Type::STRING, 'foo'),
+        new Token(Type::COLON, ':'),
+        new Token(Type::STRING, 'bar'),
+        new Token(Type::RBRACE, '}'),
         new Token(Type::SEMICOLON, ';'),
         new Token(Type::EOF, ''),
     ];

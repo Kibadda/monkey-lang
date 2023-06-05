@@ -1,13 +1,17 @@
 <?php
 
+use Monkey\Ast\Expression\ArrayLiteral;
 use Monkey\Ast\Expression\Boolean;
 use Monkey\Ast\Expression\CallExpression;
 use Monkey\Ast\Expression\FunctionLiteral;
+use Monkey\Ast\Expression\HashLiteral;
 use Monkey\Ast\Expression\Identifier;
 use Monkey\Ast\Expression\IfExpression;
+use Monkey\Ast\Expression\IndexExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
+use Monkey\Ast\Expression\StringLiteral;
 use Monkey\Ast\Program;
 use Monkey\Ast\Statement\LetStatement;
 use Monkey\Token\Token;
@@ -53,6 +57,8 @@ it('parses literal expressions', function ($input, $expression, $value) {
     'integer 2' => ['10;', IntegerLiteral::class, 10],
     'boolean 1' => ['true;', Boolean::class, true],
     'boolean 2' => ['false;', Boolean::class, false],
+    'string 1' => ['"hello world";', StringLiteral::class, 'hello world'],
+    'string 2' => ['"test";', StringLiteral::class, 'test'],
 ]);
 
 it('parses prefix expression', function ($input, $operator, $expression) {
@@ -100,6 +106,8 @@ it('parses operator precedence', function ($input, $string) {
     ['a + add(b * c) + d', '((a + add((b * c))) + d)'],
     ['add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))', 'add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))'],
     ['add(a + b + c * d / f + g)', 'add((((a + b) + ((c * d) / f)) + g))'],
+    ['a * [1, 2, 3, 4][b * c] * d', '((a * ([1, 2, 3, 4][(b * c)])) * d)'],
+    ['add(a * b[2], b[1], 2 * [1, 2][1])', 'add((a * (b[2])), (b[1]), (2 * ([1, 2][1])))'],
 ]);
 
 it('parses if expressions', function ($input, $condition, $consequence, $alternative) {
@@ -169,5 +177,61 @@ it('parses call expressions', function ($input, $expression, $arguments) {
         'fn() {}()',
         [FunctionLiteral::class, [], []],
         [],
+    ],
+]);
+
+it('parses array literals', function ($input, $elements) {
+    $program = createProgram($input);
+    expect($program->statements[0])->toBeExpressionStatement(ArrayLiteral::class, $elements);
+})->with([
+    [
+        '[1, 2 * 2, 3 + 3]',
+        [
+            [IntegerLiteral::class, 1],
+            [InfixExpression::class, [IntegerLiteral::class, 2], '*', [IntegerLiteral::class, 2]],
+            [InfixExpression::class, [IntegerLiteral::class, 3], '+', [IntegerLiteral::class, 3]],
+        ],
+    ],
+    [
+        '[]',
+        [],
+    ],
+]);
+
+it('parses index expressions', function ($input, $left, $index) {
+    $program = createProgram($input);
+    expect($program->statements[0])->toBeExpressionStatement(IndexExpression::class, $left, $index);
+})->with([
+    [
+        'myArray[1 + 1]',
+        [Identifier::class, 'myArray'],
+        [InfixExpression::class, [IntegerLiteral::class, 1], '+', [IntegerLiteral::class, 1]],
+    ],
+]);
+
+it('parses hash literals', function ($input, $pairs) {
+    $program = createProgram($input);
+    expect($program->statements[0])->toBeExpressionStatement(HashLiteral::class, $pairs);
+})->with([
+    [
+        '{"one": 1, "two": 2, "three": 3}',
+        [
+            [[StringLiteral::class, 'one'], [IntegerLiteral::class, 1]],
+            [[StringLiteral::class, 'two'], [IntegerLiteral::class, 2]],
+            [[StringLiteral::class, 'three'], [IntegerLiteral::class, 3]],
+        ],
+    ],
+    [
+        '{}',
+        [],
+    ],
+    [
+        '{"one": 1 + 1}',
+        [
+            [
+                [StringLiteral::class, 'one'],
+                [InfixExpression::class, [IntegerLiteral::class, 1], '+', [IntegerLiteral::class, 1]],
+            ],
+        ],
     ],
 ]);

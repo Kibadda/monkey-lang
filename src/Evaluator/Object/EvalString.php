@@ -2,21 +2,23 @@
 
 namespace Monkey\Evaluator\Object;
 
-class EvalInteger implements EvalObject
+class EvalString implements EvalObject
 {
+    // use Hashkey;
+
     public function __construct(
-        public int $value,
+        public string $value,
     ) {
     }
 
     public function type(): EvalType
     {
-        return EvalType::INTEGER;
+        return EvalType::STRING;
     }
 
     public function inspect(): string
     {
-        return "{$this->value}";
+        return $this->value;
     }
 
     public function hashKey(): string

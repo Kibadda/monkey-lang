@@ -24,14 +24,18 @@
 |
 */
 
+use Monkey\Ast\Expression\ArrayLiteral;
 use Monkey\Ast\Expression\Boolean;
 use Monkey\Ast\Expression\CallExpression;
 use Monkey\Ast\Expression\FunctionLiteral;
+use Monkey\Ast\Expression\HashLiteral;
 use Monkey\Ast\Expression\Identifier;
 use Monkey\Ast\Expression\IfExpression;
+use Monkey\Ast\Expression\IndexExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
+use Monkey\Ast\Expression\StringLiteral;
 use Monkey\Ast\Program;
 use Monkey\Ast\Statement\ExpressionStatement;
 use Monkey\Ast\Statement\LetStatement;
@@ -62,11 +66,15 @@ expect()->extend('toBeExpression', function (string $expression, ...$args) {
         Boolean::class => expect($this->value)->toBeBoolean(...$args),
         Identifier::class => expect($this->value)->toBeIdentifier(...$args),
         IntegerLiteral::class => expect($this->value)->toBeIntegerLiteral(...$args),
+        StringLiteral::class => expect($this->value)->toBeStringLiteral(...$args),
+        ArrayLiteral::class => expect($this->value)->toBeArrayLiteral(...$args),
+        HashLiteral::class => expect($this->value)->toBeHashLiteral(...$args),
         InfixExpression::class => expect($this->value)->toBeInfixExpression(...$args),
         PrefixExpression::class => expect($this->value)->toBePrefixExpression(...$args),
         IfExpression::class => expect($this->value)->toBeIfExpression(...$args),
         FunctionLiteral::class => expect($this->value)->toBeFunctionLiteral(...$args),
         CallExpression::class => expect($this->value)->toBeCallExpression(...$args),
+        IndexExpression::class => expect($this->value)->toBeIndexExpression(...$args),
     };
 });
 
@@ -94,6 +102,29 @@ expect()->extend('toBeIntegerLiteral', function (int $value) {
     expect($this->value)->toBeInstanceOf(IntegerLiteral::class);
     expect($this->value->value)->toBe($value);
     expect($this->value->tokenLiteral())->toBe("{$value}");
+});
+
+expect()->extend('toBeStringLiteral', function (string $value) {
+    expect($this->value)->toBeInstanceOf(StringLiteral::class);
+    expect($this->value->value)->toBe($value);
+    expect($this->value->tokenLiteral())->toBe($value);
+});
+
+expect()->extend('toBeArrayLiteral', function (array $elements) {
+    expect($this->value)->toBeInstanceOf(ArrayLiteral::class);
+    expect($this->value->elements)->toHaveCount(count($elements));
+    foreach ($this->value->elements as $i => $element) {
+        expect($element)->toBeExpression(...$elements[$i]);
+    }
+});
+
+expect()->extend('toBeHashLiteral', function (array $pairs) {
+    expect($this->value)->toBeInstanceOf(HashLiteral::class);
+    expect($this->value->pairs)->toHaveCount(count($pairs));
+    foreach ($this->value->pairs as $i => $pair) {
+        expect($pair[0])->toBeExpression(...$pairs[$i][0]);
+        expect($pair[1])->toBeExpression(...$pairs[$i][1]);
+    }
 });
 
 expect()->extend('toBeInfixExpression', function ($left, string $operator, $right) {
@@ -148,10 +179,11 @@ expect()->extend('toBeCallExpression', function ($function, array $arguments) {
     }
 });
 
-// expect()->extend('toEvaluateTo', function ($expected) {
-//     expect($evaluated->type())->toBeInstanceOf($expected[0]);
-//     expect($evaluated->value)->toBe($expected[1]);
-// });
+expect()->extend('toBeIndexExpression', function ($left, $index) {
+    expect($this->value)->toBeInstanceOf(IndexExpression::class);
+    expect($this->value->left)->toBeExpression(...$left);
+    expect($this->value->index)->toBeExpression(...$index);
+});
 
 /*
 |--------------------------------------------------------------------------

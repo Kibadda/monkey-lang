@@ -2,15 +2,19 @@
 
 namespace Monkey\Parser;
 
+use Monkey\Ast\Expression\ArrayLiteral;
 use Monkey\Ast\Expression\Boolean;
 use Monkey\Ast\Expression\CallExpression;
 use Monkey\Ast\Expression\Expression;
 use Monkey\Ast\Expression\FunctionLiteral;
+use Monkey\Ast\Expression\HashLiteral;
 use Monkey\Ast\Expression\Identifier;
 use Monkey\Ast\Expression\IfExpression;
+use Monkey\Ast\Expression\IndexExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
+use Monkey\Ast\Expression\StringLiteral;
 use Monkey\Ast\Program;
 use Monkey\Ast\Statement\BlockStatement;
 use Monkey\Ast\Statement\ExpressionStatement;
@@ -155,6 +159,9 @@ class Parser
             Type::LPAREN => $this->parseGroupedExpression(),
             Type::IF => $this->parseIfExpression(),
             Type::FUNCTION => $this->parseFunctionLiteral(),
+            Type::STRING => $this->parseStringLiteral(),
+            Type::LBRACKET => $this->parseArrayLiteral(),
+            Type::LBRACE => $this->parseHashLiteral(),
             default => null,
         };
 
@@ -179,6 +186,10 @@ class Parser
                 Type::LPAREN => call_user_func(function () use ($left) {
                     $this->nextToken();
                     return $this->parseCallExpression($left);
+                }),
+                Type::LBRACKET => call_user_func(function () use ($left) {
+                    $this->nextToken();
+                    return $this->parseIndexExpression($left);
                 }),
                 default => null,
             };
@@ -224,34 +235,22 @@ class Parser
         return new CallExpression(
             $this->curToken,
             $function,
-            $this->parseCallArguments(),
+            $this->parseExpressionList(Type::RPAREN),
         );
     }
 
-    private function parseCallArguments(): ?array
+    private function parseIndexExpression(Expression $left): ?IndexExpression
     {
-        if ($this->peekTokenIs(Type::RPAREN)) {
-            $this->nextToken();
-            return [];
-        }
+        $token = $this->curToken;
 
         $this->nextToken();
+        $index = $this->parseExpression(Precedence::LOWEST);
 
-        $arguments = [
-            $this->parseExpression(Precedence::LOWEST),
-        ];
-
-        while ($this->peekTokenIs(Type::COMMA)) {
-            $this->nextToken();
-            $this->nextToken();
-            $arguments[] = $this->parseExpression(Precedence::LOWEST);
-        }
-
-        if (!$this->expectPeek(Type::RPAREN)) {
+        if (!$this->expectPeek(Type::RBRACKET)) {
             return null;
         }
 
-        return $arguments;
+        return new IndexExpression($token, $left, $index);
     }
 
     private function parseGroupedExpression(): ?Expression
@@ -312,7 +311,7 @@ class Parser
 
         $parameters = $this->parseFunctionParameters();
 
-        if (!$this->expectPeek(Type::LBRACE)) {
+        if (is_null($parameters) || !$this->expectPeek(Type::LBRACE)) {
             return null;
         }
 
@@ -343,6 +342,84 @@ class Parser
         }
 
         return $parameters;
+    }
+
+    private function parseStringLiteral(): StringLiteral
+    {
+        return new StringLiteral(
+            $this->curToken,
+            $this->curToken->literal,
+        );
+    }
+
+    private function parseArrayLiteral(): ?ArrayLiteral
+    {
+        $token = $this->curToken;
+        $elements = $this->parseExpressionList(Type::RBRACKET);
+
+        if (is_null($elements)) {
+            return $elements;
+        }
+
+        return new ArrayLiteral($token, $elements);
+    }
+
+    private function parseHashLiteral(): ?HashLiteral
+    {
+        $token = $this->curToken;
+
+        $pairs = [];
+
+        while (!$this->peekTokenIs(Type::RBRACE)) {
+            $this->nextToken();
+            $key = $this->parseExpression(Precedence::LOWEST);
+
+            if (!$this->expectPeek(Type::COLON)) {
+                return null;
+            }
+
+            $this->nextToken();
+
+            $value = $this->parseExpression(Precedence::LOWEST);
+
+            $pairs[] = [$key, $value];
+
+            if (!$this->peekTokenIs(Type::RBRACE) && !$this->expectPeek(Type::COMMA)) {
+                return null;
+            }
+        }
+
+        if (!$this->expectPeek(Type::RBRACE)) {
+            return null;
+        }
+
+        return new HashLiteral($token, $pairs);
+    }
+
+    private function parseExpressionList(Type $end): ?array
+    {
+        if ($this->peekTokenIs($end)) {
+            $this->nextToken();
+            return [];
+        }
+
+        $this->nextToken();
+
+        $list = [
+            $this->parseExpression(Precedence::LOWEST),
+        ];
+
+        while ($this->peekTokenIs(Type::COMMA)) {
+            $this->nextToken();
+            $this->nextToken();
+            $list[] = $this->parseExpression(Precedence::LOWEST);
+        }
+
+        if (!$this->expectPeek($end)) {
+            return null;
+        }
+
+        return $list;
     }
 
     private function parseIdentifier(): Identifier

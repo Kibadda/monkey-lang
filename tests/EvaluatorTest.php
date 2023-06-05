@@ -2,11 +2,14 @@
 
 use Monkey\Evaluator\Environment;
 use Monkey\Evaluator\Evaluator;
+use Monkey\Evaluator\Object\EvalArray;
 use Monkey\Evaluator\Object\EvalBoolean;
 use Monkey\Evaluator\Object\EvalError;
 use Monkey\Evaluator\Object\EvalFunction;
+use Monkey\Evaluator\Object\EvalHash;
 use Monkey\Evaluator\Object\EvalInteger;
 use Monkey\Evaluator\Object\EvalNull;
+use Monkey\Evaluator\Object\EvalString;
 
 it('evaluates', function ($input, $eval, $value) {
     $program = createProgram($input);
@@ -14,9 +17,23 @@ it('evaluates', function ($input, $eval, $value) {
 
     $evaluated = Evaluator::new($environment)->eval($program);
     expect($evaluated)->toBeInstanceOf($eval);
-    if ($eval != EvalNull::class) {
-        expect($evaluated->value)->toBe($value);
-    }
+    match ($eval) {
+        EvalArray::class => call_user_func(function () use ($evaluated, $value) {
+            expect($evaluated->elements)->toHaveCount(count($value));
+            foreach ($evaluated->elements as $i => $element) {
+                expect($element->value)->toBe($value[$i]);
+            }
+        }),
+        EvalHash::class => call_user_func(function () use ($evaluated, $value) {
+            expect($evaluated->pairs)->toHaveCount(count($value));
+            foreach ($evaluated->pairs as $key => $pair) {
+                expect(array_key_exists($key, $value))->toBeTrue();
+                expect($pair[1]->value)->toBe($value[$key]);
+            }
+        }),
+        EvalNull::class => null,
+        default => expect($evaluated->value)->toBe($value),
+    };
 })->with([
     'literal integer 1' => ['5', EvalInteger::class, 5],
     'literal integer 2' => ['10', EvalInteger::class, 10],
@@ -65,6 +82,10 @@ it('evaluates', function ($input, $eval, $value) {
     'function 4' => ['let add = fn(x, y) { x + y; }; add(5, 5);', EvalInteger::class, 10],
     'function 5' => ['let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));', EvalInteger::class, 20],
     'function 6' => ['fn(x) { x; }(5)', EvalInteger::class, 5],
+    'string 1' => ['"Hello World!"', EvalString::class, 'Hello World!'],
+    'string 2' => ['"Hello" + " " + "World!"', EvalString::class, 'Hello World!'],
+    'array 1' => ['[1, 2 * 2, 3 + 3]', EvalArray::class, [1, 4, 6]],
+    'hash 1' => ['{"one": 10 - 9, 2: true, false: "thr" + "ee"}', EvalHash::class, ['STRING:one' => 1, 'INTEGER:2' => true, 'BOOLEAN:false' => 'three']],
 ]);
 
 it('handles errors', function ($input, $error) {
@@ -81,7 +102,10 @@ it('handles errors', function ($input, $error) {
     'unknown operator 2' => ['true + false', 'unknown operator: BOOLEAN + BOOLEAN'],
     'unknown operator 3' => ['5; true + false; 5;', 'unknown operator: BOOLEAN + BOOLEAN'],
     'unknown operator 4' => ['if (10 > 1) { true + false; }', 'unknown operator: BOOLEAN + BOOLEAN'],
+    'unknown operator 5' => ['"hello" - "world"', 'unknown operator: STRING - STRING'],
     'identifier 1' => ['foobar', 'identifier not found: foobar'],
+    'hash key 1' => ['{[1,2]: "monkey"}', 'unusable as hash key: ARRAY'],
+    'hash key 2' => ['{"name": "monkey"}[fn(x) { x }]', 'unusable as hash key: FUNCTION'],
 ]);
 
 it('evaluates functions', function () {
@@ -94,3 +118,78 @@ it('evaluates functions', function () {
     expect($evaluated->parameters[0])->toBeIdentifier('x');
     expect($evaluated->body->string())->toBe('(x + 2)');
 });
+
+it('evaluates closures', function () {
+    $program = createProgram('
+        let newAdder = fn(x) {
+            fn(y) { x + y };
+        };
+
+        let addTwo = newAdder(2);
+        addTwo(2);
+    ');
+    $environment = Environment::new();
+
+    $evaluated = Evaluator::new($environment)->eval($program);
+    expect($evaluated)->toBeInstanceOf(EvalInteger::class);
+    expect($evaluated->value)->toBe(4);
+});
+
+it('evaluates builtin functions', function ($input, $eval, $value) {
+    $program = createProgram($input);
+    $environment = Environment::new();
+
+    $evaluated = Evaluator::new($environment)->eval($program);
+    expect($evaluated)->toBeInstanceOf($eval);
+    match ($eval) {
+        EvalInteger::class => expect($evaluated->value)->toBe($value),
+        EvalError::class => expect($evaluated->message)->toBe($value),
+    };
+})->with([
+    'len 1' => ['len("")', EvalInteger::class, 0],
+    'len 2' => ['len("four")', EvalInteger::class, 4],
+    'len 3' => ['len("hello world")', EvalInteger::class, 11],
+    'len 4' => ['len(1)', EvalError::class, 'argument to `len` not supported, got INTEGER'],
+    'len 5' => ['len("one", "two")', EvalError::class, 'wrong number of arguments: got 2, wanted 1'],
+]);
+
+it('evaluates array index', function ($input, $value) {
+    $program = createProgram($input);
+    $environment = Environment::new();
+
+    $evaluated = Evaluator::new($environment)->eval($program);
+    match ($value) {
+        null => expect($evaluated)->toBeInstanceOf(EvalNull::class),
+        default => expect($evaluated->value)->toBe($value),
+    };
+})->with([
+    ['[1, 2, 3][0]', 1],
+    ['[1, 2, 3][1]', 2],
+    ['[1, 2, 3][2]', 3],
+    ['let i = 0; [1][i]', 1],
+    ['[1, 2, 3][1 + 1]', 3],
+    ['let myArray = [1, 2, 3]; myArray[2]', 3],
+    ['let myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2]', 6],
+    ['let myArray = [1, 2, 3]; let i = myArray[0]; myArray[i]', 2],
+    ['[1, 2, 3][3]', null],
+    ['[1, 2, 3][-1]', null],
+]);
+
+it('evaluates hash index', function ($input, $value) {
+    $program = createProgram($input);
+    $environment = Environment::new();
+
+    $evaluated = Evaluator::new($environment)->eval($program);
+    match ($value) {
+        null => expect($evaluated)->toBeInstanceOf(EvalNull::class),
+        default => expect($evaluated->value)->toBe($value),
+    };
+})->with([
+    ['{"foo": 5}["foo"]', 5],
+    ['{"foo": 5}["bar"]', null],
+    ['let key = "foo"; {"foo": 5}[key]', 5],
+    ['{}["foo"]', null],
+    ['{5: 5}[5]', 5],
+    ['{true: 5}[true]', 5],
+    ['{false: 5}[false]', 5],
+]);

@@ -10,4 +10,8 @@ enum EvalType
     case RETURN;
     case ERROR;
     case FUNCTION;
+    case STRING;
+    case BUILTIN;
+    case ARRAY;
+    case HASH;
 }

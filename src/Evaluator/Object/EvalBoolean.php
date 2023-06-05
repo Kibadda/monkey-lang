@@ -9,13 +9,18 @@ class EvalBoolean implements EvalObject
     ) {
     }
 
+    public function type(): EvalType
+    {
+        return EvalType::BOOLEAN;
+    }
+
     public function inspect(): string
     {
         return $this->value ? 'true' : 'false';
     }
 
-    public function type(): EvalType
+    public function hashKey(): string
     {
-        return EvalType::BOOLEAN;
+        return "{$this->type()->name}:{$this->inspect()}";
     }
 }

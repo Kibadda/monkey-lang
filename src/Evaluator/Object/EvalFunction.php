@@ -31,6 +31,6 @@ class EvalFunction implements EvalObject
             $parameters[] = $parameter->string();
         }
 
-        return "fn(" . implode(', ', $parameters) . ") {\n{$this->body->string()}\n}";
+        return "fn(" . implode(', ', $parameters) . ") {\n\t{$this->body->string()}\n}";
     }
 }

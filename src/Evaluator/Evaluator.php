@@ -2,47 +2,132 @@
 
 namespace Monkey\Evaluator;
 
+use Monkey\Ast\Expression\ArrayLiteral;
 use Monkey\Ast\Expression\Boolean;
 use Monkey\Ast\Expression\CallExpression;
 use Monkey\Ast\Expression\Expression;
 use Monkey\Ast\Expression\FunctionLiteral;
+use Monkey\Ast\Expression\HashLiteral;
 use Monkey\Ast\Expression\Identifier;
 use Monkey\Ast\Expression\IfExpression;
+use Monkey\Ast\Expression\IndexExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
+use Monkey\Ast\Expression\StringLiteral;
 use Monkey\Ast\Node;
 use Monkey\Ast\Program;
 use Monkey\Ast\Statement\BlockStatement;
 use Monkey\Ast\Statement\ExpressionStatement;
 use Monkey\Ast\Statement\LetStatement;
 use Monkey\Ast\Statement\ReturnStatement;
+use Monkey\Evaluator\Object\EvalArray;
 use Monkey\Evaluator\Object\EvalBoolean;
+use Monkey\Evaluator\Object\EvalBuiltin;
 use Monkey\Evaluator\Object\EvalError;
 use Monkey\Evaluator\Object\EvalFunction;
+use Monkey\Evaluator\Object\EvalHash;
 use Monkey\Evaluator\Object\EvalInteger;
 use Monkey\Evaluator\Object\EvalNull;
 use Monkey\Evaluator\Object\EvalObject;
 use Monkey\Evaluator\Object\EvalReturn;
+use Monkey\Evaluator\Object\EvalString;
 use Monkey\Evaluator\Object\EvalType;
 
 class Evaluator
 {
     public static function new(Environment $environment): self
     {
-        return new self(
-            $environment,
-            [
-                true => new EvalBoolean(true),
-                false => new EvalBoolean(false),
-                null => new EvalNull(),
-            ],
-        );
+        $singletons = [
+            true => new EvalBoolean(true),
+            false => new EvalBoolean(false),
+            null => new EvalNull(),
+        ];
+
+        $builtins = [
+            'len' => new EvalBuiltin(function (...$args) {
+                if (count($args) != 1) {
+                    return new EvalError('wrong number of arguments: got ' . count($args) . ', wanted 1');
+                }
+
+                return match ($args[0]::class) {
+                    EvalString::class => new EvalInteger(strlen($args[0]->value)),
+                    EvalArray::class => new EvalInteger(count($args[0]->elements)),
+                    default => new EvalError("argument to `len` not supported, got {$args[0]->type()->name}"),
+                };
+            }),
+            'first' => new EvalBuiltin(function (...$args) use ($singletons) {
+                if (count($args) != 1) {
+                    return new EvalError('wrong number of arguments: got ' . count($args) . ', wanted 1');
+                }
+
+                if ($args[0]->type() != EvalType::ARRAY) {
+                    return new EvalError("argument to `first` must be ARRAY: got {$args[0]->type()->name}");
+                }
+
+                if (count($args[0]->elements) > 0) {
+                    return $args[0]->elements[0];
+                }
+
+                return $singletons[null];
+            }),
+            'last' => new EvalBuiltin(function (...$args) use ($singletons) {
+                if (count($args) != 1) {
+                    return new EvalError('wrong number of arguments: got ' . count($args) . ', wanted 1');
+                }
+
+                if ($args[0]->type() != EvalType::ARRAY) {
+                    return new EvalError("argument to `first` must be ARRAY: got {$args[0]->type()->name}");
+                }
+
+                if (count($args[0]->elements) > 0) {
+                    return $args[0]->elements[count($args[0]->elements) - 1];
+                }
+
+                return $singletons[null];
+            }),
+            'rest' => new EvalBuiltin(function (...$args) use ($singletons) {
+                if (count($args) != 1) {
+                    return new EvalError('wrong number of arguments: got ' . count($args) . ', wanted 1');
+                }
+
+                if ($args[0]->type() != EvalType::ARRAY) {
+                    return new EvalError("argument to `first` must be ARRAY: got {$args[0]->type()->name}");
+                }
+
+                if (count($args[0]->elements) > 0) {
+                    return new EvalArray(array_splice($args[0]->elements, 1));
+                }
+
+                return $singletons[null];
+            }),
+            'push' => new EvalBuiltin(function (...$args) {
+                if (count($args) != 2) {
+                    return new EvalError('wrong number of arguments: got ' . count($args) . ', wanted 2');
+                }
+
+                if ($args[0]->type() != EvalType::ARRAY) {
+                    return new EvalError("argument to `first` must be ARRAY: got {$args[0]->type()->name}");
+                }
+
+                return new EvalArray([...$args[0]->elements, $args[1]]);
+            }),
+            'puts' => new EvalBuiltin(function (...$args) use ($singletons) {
+                foreach ($args as $arg) {
+                    fwrite(STDOUT, "{$arg->inspect()}\n");
+                }
+
+                return $singletons[null];
+            }),
+        ];
+
+        return new self($environment, $singletons, $builtins);
     }
 
     private function __construct(
         private Environment $environment,
         private array $singletons,
+        private array $builtins,
     ) {
     }
 
@@ -53,6 +138,7 @@ class Evaluator
             ExpressionStatement::class => $this->eval($node->value),
             IntegerLiteral::class => new EvalInteger($node->value),
             Boolean::class => $this->boolean($node->value),
+            StringLiteral::class => new EvalString($node->value),
             PrefixExpression::class => call_user_func(function () use ($node) {
                 $right = $this->eval($node->right);
 
@@ -117,6 +203,56 @@ class Evaluator
                 }
 
                 return $this->applyFunction($function, $arguments);
+            }),
+            ArrayLiteral::class => call_user_func(function () use ($node) {
+                $elements = $this->evalExpressions($node->elements);
+
+                if (count($elements) == 1 && $this->isError($elements[0])) {
+                    return $elements[0];
+                }
+
+                return new EvalArray($elements);
+            }),
+            IndexExpression::class => call_user_func(function () use ($node) {
+                $left = $this->eval($node->left);
+
+                if ($this->isError($left)) {
+                    return $left;
+                }
+
+                $index = $this->eval($node->index);
+
+                if ($this->isError($index)) {
+                    return $index;
+                }
+
+                return $this->evalIndexExpression($left, $index);
+            }),
+            HashLiteral::class => call_user_func(function () use ($node) {
+                $pairs = [];
+
+                foreach ($node->pairs as $pair) {
+                    $key = $this->eval($pair[0]);
+
+                    if ($this->isError($key)) {
+                        return $key;
+                    }
+
+
+                    if (!$key instanceof EvalInteger && !$key instanceof EvalString && !$key instanceof EvalBoolean) {
+                        return new EvalError("unusable as hash key: {$key->type()->name}");
+                    }
+
+                    $value = $this->eval($pair[1]);
+
+                    if ($this->isError($value)) {
+                        return $value;
+                    }
+
+                    $pairs[$key->hashKey()] = [$key, $value];
+                }
+
+                return new EvalHash($pairs);
             }),
             default => null,
         };
@@ -203,6 +339,14 @@ class Evaluator
             $operator == '==' => $this->boolean($left->value == $right->value),
             $operator == '!=' => $this->boolean($left->value != $right->value),
             $left->type() != $right->type() => new EvalError("type mismatch: {$left->type()->name} {$operator} {$right->type()->name}"),
+            $left->type() == EvalType::STRING && $right->type() == EvalType::STRING => match ($operator) {
+                '+' => new EvalString($left->value . $right->value),
+                '<' => $this->boolean($left->value < $right->value),
+                '>' => $this->boolean($left->value > $right->value),
+                '==' => $this->boolean($left->value == $right->value),
+                '!=' => $this->boolean($left->value != $right->value),
+                default => new EvalError("unknown operator: {$left->type()->name} {$operator} {$right->type()->name}"),
+            },
             default => new EvalError("unknown operator: {$left->type()->name} {$operator} {$right->type()->name}"),
         };
     }
@@ -226,11 +370,15 @@ class Evaluator
     {
         $value = $this->environment->get($identifier->value);
 
-        if (is_null($value)) {
-            return new EvalError("identifier not found: {$identifier->value}");
+        if ($value) {
+            return $value;
         }
 
-        return $value;
+        if (!empty($this->builtins[$identifier->value])) {
+            return $this->builtins[$identifier->value];
+        }
+
+        return new EvalError("identifier not found: {$identifier->value}");
     }
 
     /**
@@ -259,15 +407,17 @@ class Evaluator
      */
     private function applyFunction(EvalObject $function, array $arguments): EvalObject
     {
-        if (!$function instanceof EvalFunction) {
-            return new EvalError("not a function: {$function->type()}");
-        }
-
-        $oldEnv = $this->environment;
-        $this->environment = $this->extendFunctionEnv($function, $arguments);
-        $evaluated = $this->eval($function->body);
-        $this->environment = $oldEnv;
-        return $this->unwrapReturnValue($evaluated);
+        return match ($function::class) {
+            EvalFunction::class => call_user_func(function () use ($function, $arguments) {
+                $oldEnv = $this->environment;
+                $this->environment = $this->extendFunctionEnv($function, $arguments);
+                $evaluated = $this->eval($function->body);
+                $this->environment = $oldEnv;
+                return $this->unwrapReturnValue($evaluated);
+            }),
+            EvalBuiltin::class => ($function->builtinFunction)(...$arguments),
+            default => new EvalError("not a function: {$function->type()}"),
+        };
     }
 
     /**
@@ -275,7 +425,7 @@ class Evaluator
      */
     private function extendFunctionEnv(EvalFunction $function, array $arguments): Environment
     {
-        $environment = Environment::closed($this->environment);
+        $environment = Environment::closed($function->environment);
 
         foreach ($function->parameters as $i => $parameter) {
             $environment->set($parameter->value, $arguments[$i]);
@@ -291,5 +441,33 @@ class Evaluator
         }
 
         return $evalObject;
+    }
+
+    private function evalIndexExpression(EvalObject $left, EvalObject $index): ?EvalObject
+    {
+        return match (true) {
+            $left->type() == EvalType::ARRAY && $index->type() == EvalType::INTEGER => call_user_func(function () use ($left, $index) {
+                $i = $index->value;
+                $max = count($left->elements) - 1;
+
+                if ($i < 0 || $i > $max) {
+                    return $this->singletons[null];
+                }
+
+                return $left->elements[$i];
+            }),
+            $left->type() == EvalType::HASH => call_user_func(function () use ($left, $index) {
+                if (!$index instanceof EvalInteger && !$index instanceof EvalString && !$index instanceof EvalBoolean) {
+                    return new EvalError("unusable as hash key: {$index->type()->name}");
+                }
+
+                if (empty($left->pairs[$index->hashKey()])) {
+                    return $this->singletons[null];
+                }
+
+                return $left->pairs[$index->hashKey()][1];
+            }),
+            default => new EvalError("index operator not supported: {$left->type()->name}"),
+        };
     }
 }

@@ -9,6 +9,7 @@ enum Type
 
     case IDENTIFIER;
     case INT;
+    case STRING;
 
     case ASSIGN;
     case PLUS;
@@ -28,6 +29,9 @@ enum Type
     case RPAREN;
     case LBRACE;
     case RBRACE;
+    case LBRACKET;
+    case RBRACKET;
+    case COLON;
 
     case FUNCTION;
     case LET;

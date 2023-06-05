@@ -26,6 +26,10 @@ class Repl
     {
         $environment = Environment::new();
 
+        // TODO: implement array keys?
+        // $commands = [];
+        // $index = 0;
+
         fwrite(STDOUT, "Hello! This ist the Monkey programming language!\nFeel free to type in commands\n");
 
         while (true) {

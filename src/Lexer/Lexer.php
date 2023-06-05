@@ -84,6 +84,19 @@ class Lexer
         }
     }
 
+    private function readString(): string
+    {
+        $pos = $this->position + 1;
+        while (true) {
+            $this->readChar();
+            if ($this->ch == '"' || $this->ch = '') {
+                break;
+            }
+        }
+
+        return substr($this->input, $pos, $this->position - $pos);
+    }
+
     public function nextToken(): Token
     {
         $token = null;
@@ -129,6 +142,10 @@ class Lexer
             '>' => new Token(Type::GT, $this->ch),
             '{' => new Token(Type::LBRACE, $this->ch),
             '}' => new Token(Type::RBRACE, $this->ch),
+            '"' => new Token(Type::STRING, $this->readString()),
+            '[' => new Token(Type::LBRACKET, $this->ch),
+            ']' => new Token(Type::RBRACKET, $this->ch),
+            ':' => new Token(Type::COLON, $this->ch),
             '' => new Token(Type::EOF, $this->ch),
             default => new Token(Type::ILLEGAL, $this->ch),
         };
