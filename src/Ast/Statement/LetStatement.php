@@ -4,13 +4,11 @@ namespace Monkey\Ast\Statement;
 
 use Monkey\Ast\Expression\Expression;
 use Monkey\Ast\Expression\Identifier;
-use Monkey\Ast\Modify;
+use Monkey\Ast\Node;
 use Monkey\Token\Token;
 
 class LetStatement implements Statement
 {
-    use Modify;
-
     public function __construct(
         public Token $token,
         public Identifier $name,
@@ -30,5 +28,12 @@ class LetStatement implements Statement
     public function string(): string
     {
         return "{$this->tokenLiteral()} {$this->name->string()} = {$this->value->string()};";
+    }
+
+    public function modify(callable $modifier): Node
+    {
+        $this->value = $this->value->modify($modifier);
+
+        return $modifier($this);
     }
 }

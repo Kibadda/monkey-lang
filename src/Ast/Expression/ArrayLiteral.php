@@ -2,13 +2,11 @@
 
 namespace Monkey\Ast\Expression;
 
-use Monkey\Ast\Modify;
+use Monkey\Ast\Node;
 use Monkey\Token\Token;
 
 class ArrayLiteral implements Expression
 {
-    use Modify;
-
     /**
      * @param Expression[] $elements
      */
@@ -36,5 +34,12 @@ class ArrayLiteral implements Expression
         }
 
         return '[' . implode(', ', $elements) . ']';
+    }
+
+    public function modify(callable $modifier): Node
+    {
+        $this->elements = array_map(fn (Expression $element) => $element->modify($modifier), $this->elements);
+
+        return $modifier($this);
     }
 }

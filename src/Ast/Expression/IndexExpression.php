@@ -2,13 +2,11 @@
 
 namespace Monkey\Ast\Expression;
 
-use Monkey\Ast\Modify;
+use Monkey\Ast\Node;
 use Monkey\Token\Token;
 
 class IndexExpression implements Expression
 {
-    use Modify;
-
     public function __construct(
         public Token $token,
         public Expression $left,
@@ -28,5 +26,13 @@ class IndexExpression implements Expression
     public function string(): string
     {
         return "({$this->left->string()}[{$this->index->string()}])";
+    }
+
+    public function modify(callable $modifier): Node
+    {
+        $this->left = $this->left->modify($modifier);
+        $this->index = $this->index->modify($modifier);
+
+        return $modifier($this);
     }
 }

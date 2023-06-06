@@ -2,14 +2,12 @@
 
 namespace Monkey\Ast\Expression;
 
-use Monkey\Ast\Modify;
+use Monkey\Ast\Node;
 use Monkey\Ast\Statement\BlockStatement;
 use Monkey\Token\Token;
 
 class MacroLiteral implements Expression
 {
-    use Modify;
-
     /**
      * @param Identifier[] $parameters
      */
@@ -38,5 +36,10 @@ class MacroLiteral implements Expression
         }
 
         return "{$this->tokenLiteral()}(" . implode(', ', $parameters) . ") {$this->body->string()}";
+    }
+
+    public function modify(callable $modifier): Node
+    {
+        return $modifier($this);
     }
 }

@@ -2,13 +2,11 @@
 
 namespace Monkey\Ast\Expression;
 
-use Monkey\Ast\Modify;
+use Monkey\Ast\Node;
 use Monkey\Token\Token;
 
 class Boolean implements Expression
 {
-    use Modify;
-
     public function __construct(
         public Token $token,
         public bool $value,
@@ -27,5 +25,10 @@ class Boolean implements Expression
     public function string(): string
     {
         return $this->token->literal;
+    }
+
+    public function modify(callable $modifier): Node
+    {
+        return $modifier($this);
     }
 }

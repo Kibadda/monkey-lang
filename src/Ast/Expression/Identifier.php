@@ -2,13 +2,11 @@
 
 namespace Monkey\Ast\Expression;
 
-use Monkey\Ast\Modify;
+use Monkey\Ast\Node;
 use Monkey\Token\Token;
 
 class Identifier implements Expression
 {
-    use Modify;
-
     public function __construct(
         public Token $token,
         public string $value,
@@ -27,5 +25,10 @@ class Identifier implements Expression
     public function string(): string
     {
         return $this->value;
+    }
+
+    public function modify(callable $modifier): Node
+    {
+        return $modifier($this);
     }
 }

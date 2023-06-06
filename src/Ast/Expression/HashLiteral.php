@@ -2,13 +2,11 @@
 
 namespace Monkey\Ast\Expression;
 
-use Monkey\Ast\Modify;
+use Monkey\Ast\Node;
 use Monkey\Token\Token;
 
 class HashLiteral implements Expression
 {
-    use Modify;
-
     /**
      * @param array<Expression[]> $pairs
      */
@@ -36,5 +34,12 @@ class HashLiteral implements Expression
         }
 
         return '{' . implode(', ', $pairs) . '}';
+    }
+
+    public function modify(callable $modifier): Node
+    {
+        $this->pairs = array_map(fn (array $pair) => [$pair[0]->modify($modifier), $pair[1]->modify($modifier)], $this->pairs);
+
+        return $modifier($this);
     }
 }

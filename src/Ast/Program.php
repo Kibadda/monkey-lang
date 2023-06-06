@@ -6,8 +6,6 @@ use Monkey\Ast\Statement\Statement;
 
 class Program implements Node
 {
-    use Modify;
-
     /** @var Statement[] $statements */
     public array $statements;
 
@@ -37,5 +35,12 @@ class Program implements Node
         }
 
         return $string;
+    }
+
+    public function modify(callable $modifier): Node
+    {
+        $this->statements = array_map(fn (Statement $statement) => $statement->modify($modifier), $this->statements);
+
+        return $modifier($this);
     }
 }

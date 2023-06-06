@@ -2,13 +2,11 @@
 
 namespace Monkey\Ast\Statement;
 
-use Monkey\Ast\Modify;
+use Monkey\Ast\Node;
 use Monkey\Token\Token;
 
 class BlockStatement implements Statement
 {
-    use Modify;
-
     /**
      * @param Statement[] $statements
      */
@@ -36,5 +34,12 @@ class BlockStatement implements Statement
         }
 
         return $string;
+    }
+
+    public function modify(callable $modifier): Node
+    {
+        $this->statements = array_map(fn (Statement $statement) => $statement->modify($modifier), $this->statements);
+
+        return $modifier($this);
     }
 }

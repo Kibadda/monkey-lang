@@ -2,13 +2,11 @@
 
 namespace Monkey\Ast\Expression;
 
-use Monkey\Ast\Modify;
+use Monkey\Ast\Node;
 use Monkey\Token\Token;
 
 class CallExpression implements Expression
 {
-    use Modify;
-
     /**
      * @param Expression[] $arguments
      */
@@ -37,5 +35,10 @@ class CallExpression implements Expression
         }
 
         return "{$this->function->string()}(" . implode(', ', $arguments) . ")";
+    }
+
+    public function modify(callable $modifier): Node
+    {
+        return $modifier($this);
     }
 }
