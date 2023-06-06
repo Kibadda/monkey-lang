@@ -1,5 +1,9 @@
 {
   "name": "michael/php-lexer",
+  "description": "this is an interpreter for the monkey language",
+  "version": "1.0",
+  "homepage": "https://github.com/Kibadda/monkey-lang",
+  "license": "GPL-3.0-only",
   "type": "project",
   "autoload": {
     "psr-4": {
@@ -21,5 +25,8 @@
     "allow-plugins": {
       "pestphp/pest-plugin": true
     }
+  },
+  "scripts": {
+    "test": "./vendor/bin/pest"
   }
 }
