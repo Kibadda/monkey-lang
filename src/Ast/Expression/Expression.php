@@ -6,5 +6,4 @@ use Monkey\Ast\Node;
 
 interface Expression extends Node
 {
-    public function expressionNode();
 }

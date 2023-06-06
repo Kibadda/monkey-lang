@@ -16,10 +16,6 @@ class LetStatement implements Statement
     ) {
     }
 
-    public function statementNode()
-    {
-    }
-
     public function tokenLiteral(): string
     {
         return $this->token->literal;

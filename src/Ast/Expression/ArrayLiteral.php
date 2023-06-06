@@ -16,10 +16,6 @@ class ArrayLiteral implements Expression
     ) {
     }
 
-    public function expressionNode()
-    {
-    }
-
     public function tokenLiteral(): string
     {
         return $this->token->literal;

@@ -6,5 +6,4 @@ use Monkey\Ast\Node;
 
 interface Statement extends Node
 {
-    public function statementNode();
 }
