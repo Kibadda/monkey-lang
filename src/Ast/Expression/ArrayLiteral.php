@@ -13,7 +13,7 @@ class ArrayLiteral implements Expression
      * @param Expression[] $elements
      */
     public function __construct(
-        public ?Token $token,
+        public Token $token,
         public array $elements,
     ) {
     }

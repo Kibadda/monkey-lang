@@ -94,6 +94,10 @@ class Parser
 
         $value = $this->parseExpression(Precedence::LOWEST);
 
+        if (is_null($value)) {
+            return $value;
+        }
+
         if ($this->peekTokenIs(Type::SEMICOLON)) {
             $this->nextToken();
         }
@@ -101,19 +105,23 @@ class Parser
         return new LetStatement($token, $name, $value);
     }
 
-    private function parseReturnStatement(): ReturnStatement
+    private function parseReturnStatement(): ?ReturnStatement
     {
-        return new ReturnStatement(
-            $this->curToken,
-            call_user_func(function () {
-                $this->nextToken();
-                $value = $this->parseExpression(Precedence::LOWEST);
-                if ($this->peekTokenIs(Type::SEMICOLON)) {
-                    $this->nextToken();
-                }
-                return $value;
-            }),
-        );
+        $token = $this->curToken;
+
+        $this->nextToken();
+
+        $value = $this->parseExpression(Precedence::LOWEST);
+
+        if (is_null($value)) {
+            return $value;
+        }
+
+        if ($this->peekTokenIs(Type::SEMICOLON)) {
+            $this->nextToken();
+        }
+
+        return new ReturnStatement($token, $value);
     }
 
     private function parseBlockStatement(): BlockStatement
@@ -136,10 +144,15 @@ class Parser
         return new BlockStatement($token, $statements);
     }
 
-    private function parseExpressionStatement(): ExpressionStatement
+    private function parseExpressionStatement(): ?ExpressionStatement
     {
         $token = $this->curToken;
+
         $expression = $this->parseExpression(Precedence::LOWEST);
+
+        if (is_null($expression)) {
+            return $expression;
+        }
 
         if ($this->peekTokenIs(Type::SEMICOLON)) {
             $this->nextToken();
@@ -206,39 +219,48 @@ class Parser
         return $left;
     }
 
-    private function parsePrefixExpression(): PrefixExpression
+    private function parsePrefixExpression(): ?PrefixExpression
     {
-        return new PrefixExpression(
-            $this->curToken,
-            $this->curToken->literal,
-            call_user_func(function () {
-                $this->nextToken();
-                return $this->parseExpression(Precedence::PREFIX);
-            }),
-        );
+        $token = $this->curToken;
+
+        $this->nextToken();
+
+        $right = $this->parseExpression(Precedence::PREFIX);
+
+        if (is_null($right)) {
+            return $right;
+        }
+
+        return new PrefixExpression($token, $token->literal, $right);
     }
 
-    private function parseInfixExpression(Expression $left): InfixExpression
+    private function parseInfixExpression(Expression $left): ?InfixExpression
     {
-        return new InfixExpression(
-            $this->curToken,
-            $left,
-            $this->curToken->literal,
-            call_user_func(function () {
-                $precedence = $this->curPrecedence();
-                $this->nextToken();
-                return $this->parseExpression($precedence);
-            }),
-        );
+        $token = $this->curToken;
+
+        $precedence = $this->curPrecedence();
+        $this->nextToken();
+
+        $right = $this->parseExpression($precedence);
+
+        if (is_null($right)) {
+            return $right;
+        }
+
+        return new InfixExpression($token, $left, $token->literal, $right);
     }
 
-    private function parseCallExpression(Expression $function): CallExpression
+    private function parseCallExpression(Expression $function): ?CallExpression
     {
-        return new CallExpression(
-            $this->curToken,
-            $function,
-            $this->parseExpressionList(Type::RPAREN),
-        );
+        $token = $this->curToken;
+
+        $arguments = $this->parseExpressionList(Type::RPAREN);
+
+        if (is_null($arguments)) {
+            return $arguments;
+        }
+
+        return new CallExpression($token, $function, $arguments);
     }
 
     private function parseIndexExpression(Expression $left): ?IndexExpression

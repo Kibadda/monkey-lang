@@ -13,7 +13,7 @@ class BlockStatement implements Statement
      * @param Statement[] $statements
      */
     public function __construct(
-        public ?Token $token,
+        public Token $token,
         public array $statements,
     ) {
     }

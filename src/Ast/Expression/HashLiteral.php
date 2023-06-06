@@ -13,7 +13,7 @@ class HashLiteral implements Expression
      * @param array<Expression[]> $pairs
      */
     public function __construct(
-        public ?Token $token,
+        public Token $token,
         public array $pairs,
     ) {
     }

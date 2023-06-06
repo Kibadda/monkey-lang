@@ -10,8 +10,8 @@ class Identifier implements Expression
     use Modify;
 
     public function __construct(
-        public ?Token $token,
-        public ?string $value,
+        public Token $token,
+        public string $value,
     ) {
     }
 

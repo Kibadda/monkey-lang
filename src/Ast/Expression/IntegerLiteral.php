@@ -10,7 +10,7 @@ class IntegerLiteral implements Expression
     use Modify;
 
     public function __construct(
-        public ?Token $token,
+        public Token $token,
         public int $value,
     ) {
     }

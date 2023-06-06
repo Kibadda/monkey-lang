@@ -10,7 +10,7 @@ class IndexExpression implements Expression
     use Modify;
 
     public function __construct(
-        public ?Token $token,
+        public Token $token,
         public Expression $left,
         public Expression $index,
     ) {

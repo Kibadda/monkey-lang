@@ -15,9 +15,13 @@ use Monkey\Ast\Statement\BlockStatement;
 use Monkey\Ast\Statement\ExpressionStatement;
 use Monkey\Ast\Statement\LetStatement;
 use Monkey\Ast\Statement\ReturnStatement;
+use Monkey\Token\Token;
+use Monkey\Token\Type;
 
-$one = fn () => new IntegerLiteral(null, 1);
-$two = fn () => new IntegerLiteral(null, 2);
+$token = new Token(Type::ILLEGAL, '');
+
+$one = fn () => new IntegerLiteral($token, 1);
+$two = fn () => new IntegerLiteral($token, 2);
 
 it('modifies', function (Node $input, Node $expected) {
     $turnOneIntoTwo = function (Node $node): Node {
@@ -42,43 +46,43 @@ it('modifies', function (Node $input, Node $expected) {
         $two(),
     ],
     [
-        new Program([new ExpressionStatement(value: $one())]),
-        new Program([new ExpressionStatement(value: $two())]),
+        new Program([new ExpressionStatement($token, $one())]),
+        new Program([new ExpressionStatement($token, $two())]),
     ],
     [
-        new InfixExpression(null, $one(), '+', $two()),
-        new InfixExpression(null, $two(), '+', $two()),
+        new InfixExpression($token, $one(), '+', $two()),
+        new InfixExpression($token, $two(), '+', $two()),
     ],
     [
-        new PrefixExpression(null, '-', $two()),
-        new PrefixExpression(null, '-', $two()),
+        new PrefixExpression($token, '-', $two()),
+        new PrefixExpression($token, '-', $two()),
     ],
     [
-        new IndexExpression(null, $one(), $one()),
-        new IndexExpression(null, $two(), $two()),
+        new IndexExpression($token, $one(), $one()),
+        new IndexExpression($token, $two(), $two()),
     ],
     [
-        new IfExpression(null, $one(), new BlockStatement(null, [new ExpressionStatement(null, $one())]), new BlockStatement(null, [new ExpressionStatement(null, $one())])),
-        new IfExpression(null, $two(), new BlockStatement(null, [new ExpressionStatement(null, $two())]), new BlockStatement(null, [new ExpressionStatement(null, $two())])),
+        new IfExpression($token, $one(), new BlockStatement($token, [new ExpressionStatement($token, $one())]), new BlockStatement($token, [new ExpressionStatement($token, $one())])),
+        new IfExpression($token, $two(), new BlockStatement($token, [new ExpressionStatement($token, $two())]), new BlockStatement($token, [new ExpressionStatement($token, $two())])),
     ],
     [
-        new ReturnStatement(null, $one()),
-        new ReturnStatement(null, $two()),
+        new ReturnStatement($token, $one()),
+        new ReturnStatement($token, $two()),
     ],
     [
-        new LetStatement(null, null, $one()),
-        new LetStatement(null, null, $two()),
+        new LetStatement($token, new Identifier($token, ''), $one()),
+        new LetStatement($token, new Identifier($token, ''), $two()),
     ],
     [
-        new FunctionLiteral(null, [new Identifier(null, null)], new BlockStatement(null, [new ExpressionStatement(null, $one())])),
-        new FunctionLiteral(null, [new Identifier(null, null)], new BlockStatement(null, [new ExpressionStatement(null, $two())])),
+        new FunctionLiteral($token, [new Identifier($token, '')], new BlockStatement($token, [new ExpressionStatement($token, $one())])),
+        new FunctionLiteral($token, [new Identifier($token, '')], new BlockStatement($token, [new ExpressionStatement($token, $two())])),
     ],
     [
-        new ArrayLiteral(null, [$one(), $one()]),
-        new ArrayLiteral(null, [$two(), $two()]),
+        new ArrayLiteral($token, [$one(), $one()]),
+        new ArrayLiteral($token, [$two(), $two()]),
     ],
     [
-        new HashLiteral(null, [[$one(), $one()]]),
-        new HashLiteral(null, [[$two(), $two()]]),
+        new HashLiteral($token, [[$one(), $one()]]),
+        new HashLiteral($token, [[$two(), $two()]]),
     ],
 ]);

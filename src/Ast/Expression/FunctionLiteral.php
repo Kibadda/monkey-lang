@@ -14,7 +14,7 @@ class FunctionLiteral implements Expression
      * @param Identifier[] $parameters
      */
     public function __construct(
-        public ?Token $token,
+        public Token $token,
         public array $parameters,
         public BlockStatement $body,
     ) {

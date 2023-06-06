@@ -11,7 +11,7 @@ class IfExpression implements Expression
     use Modify;
 
     public function __construct(
-        public ?Token $token,
+        public Token $token,
         public Expression $condition,
         public BlockStatement $consequence,
         public ?BlockStatement $alternative = null,

@@ -12,8 +12,8 @@ class LetStatement implements Statement
     use Modify;
 
     public function __construct(
-        public ?Token $token,
-        public ?Identifier $name,
+        public Token $token,
+        public Identifier $name,
         public Expression $value,
     ) {
     }

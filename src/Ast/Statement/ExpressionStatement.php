@@ -11,8 +11,8 @@ class ExpressionStatement implements Statement
     use Modify;
 
     public function __construct(
-        public ?Token $token = null,
-        public ?Expression $value = null,
+        public Token $token,
+        public Expression $value,
     ) {
     }
 
@@ -27,6 +27,6 @@ class ExpressionStatement implements Statement
 
     public function string(): string
     {
-        return $this->value?->string() ?? '';
+        return $this->value->string();
     }
 }
