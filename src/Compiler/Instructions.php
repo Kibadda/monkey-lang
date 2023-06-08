@@ -14,7 +14,9 @@ class Instructions implements ArrayAccess
     {
         $elements = [];
         foreach ($instructionsArray as $instructions) {
-            $elements = array_merge($elements, $instructions->elements);
+            foreach ($instructions->elements as $element) {
+                $elements[] = $element;
+            }
         }
 
         return new self($elements);
@@ -52,9 +54,9 @@ class Instructions implements ArrayAccess
         return $this->offsetExists($offset) ? $this->elements[$offset] : null;
     }
 
-    public function slice($offset): Instructions
+    public function slice(int $offset, ?int $length = null): Instructions
     {
-        return new Instructions(array_slice($this->elements, $offset));
+        return new Instructions(array_slice($this->elements, $offset, $length));
     }
 
     public function count(): int
@@ -75,6 +77,7 @@ class Instructions implements ArrayAccess
             $string .= sprintf("%04d %s\n", $i, match (true) {
                 count($definition->operandWidths) != count($operands) => 'ERROR: operand len ' . count($operands) . ' does not match defined ' . count($definition->operandWidths),
                 default => match (count($operands)) {
+                    0 => $definition->name,
                     1 => "{$definition->name} {$operands[0]}",
                     default => "ERROR: unhandled operandCount for {$definition->name}",
                 },

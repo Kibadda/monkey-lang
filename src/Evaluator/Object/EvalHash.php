@@ -5,7 +5,7 @@ namespace Monkey\Evaluator\Object;
 class EvalHash implements EvalObject
 {
     /**
-     * @param array<bool|string|int, Expression[]> $pairs
+     * @param array<string, Expression[]> $pairs
      */
     public function __construct(
         public array $pairs,

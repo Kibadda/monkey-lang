@@ -16,4 +16,5 @@ enum EvalType
     case HASH;
     case QUOTE;
     case MACRO;
+    case COMPILED_FUNCTION;
 }

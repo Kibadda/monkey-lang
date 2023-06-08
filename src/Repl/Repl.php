@@ -2,10 +2,14 @@
 
 namespace Monkey\Repl;
 
+use Exception;
+use Monkey\Compiler\Compiler;
+use Monkey\Compiler\SymbolTable;
 use Monkey\Evaluator\Environment;
 use Monkey\Evaluator\Evaluator;
 use Monkey\Lexer\Lexer;
 use Monkey\Parser\Parser;
+use Monkey\VM\VM;
 
 class Repl
 {
@@ -24,13 +28,11 @@ class Repl
 
     public static function start()
     {
-        $environment = Environment::new();
+        fwrite(STDOUT, "Hello! This is the Monkey programming language!\nFeel free to type in commands\n");
 
-        // TODO: implement arrow keys?
-        // $commands = [];
-        // $index = 0;
-
-        fwrite(STDOUT, "Hello! This ist the Monkey programming language!\nFeel free to type in commands\n");
+        $constants = [];
+        $globals = [];
+        $symbolTable = new SymbolTable();
 
         while (true) {
             fwrite(STDOUT, self::PROMPT);
@@ -55,14 +57,36 @@ class Repl
                 continue;
             }
 
-            $environment->extend(Evaluator::defineMacros($program));
-            $expanded = Evaluator::expandMacros($program, $environment);
+            // $environment->extend(Evaluator::defineMacros($program));
+            // $expanded = Evaluator::expandMacros($program, $environment);
 
-            $evaluated = Evaluator::new($environment)->eval($expanded);
+            // $evaluated = Evaluator::new($environment)->eval($expanded);
 
-            if (!is_null($evaluated)) {
-                fwrite(STDOUT, "{$evaluated->inspect()}\n");
+            // if (!is_null($evaluated)) {
+            //     fwrite(STDOUT, "{$evaluated->inspect()}\n");
+            // }
+
+            $compiler = Compiler::newWithState($symbolTable, $constants);
+            try {
+                $compiler->compile($program);
+            } catch (Exception $e) {
+                fwrite(STDOUT, "Woops! Compilation failed:\n {$e->getMessage()}\n");
+                continue;
             }
+
+            $constants = $compiler->constants;
+
+            $vm = VM::newWithGlobalsStore($compiler, $globals);
+            try {
+                $vm->run();
+            } catch (Exception $e) {
+                fwrite(STDOUT, "Woops! Executing bytecode failed:\n {$e->getMessage()}\n");
+                continue;
+            }
+
+            $globals = $vm->globals;
+
+            fwrite(STDOUT, "{$vm->lastPoppedStackElem()->inspect()}\n");
         }
     }
 }

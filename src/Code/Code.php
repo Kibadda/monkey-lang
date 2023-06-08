@@ -7,10 +7,63 @@ use Monkey\Compiler\Instructions;
 enum Code: int
 {
     case CONSTANT = 1;
+    case ADD = 2;
+    case POP = 3;
+    case SUB = 4;
+    case MUL = 5;
+    case DIV = 6;
+    case TRUE = 7;
+    case FALSE = 8;
+    case EQUAL = 9;
+    case NOT_EQUAL = 10;
+    case GREATER_THAN = 11;
+    case MINUS = 12;
+    case BANG = 13;
+    case JUMP_NOT_TRUTHY = 14;
+    case JUMP = 15;
+    case NULL = 16;
+    case GET_GLOBAL = 17;
+    case SET_GLOBAL = 18;
+    case ARRAY = 19;
+    case HASH = 20;
+    case INDEX = 21;
+    case CALL = 22;
+    case RETURN_VALUE = 23;
+    case RETURN = 24;
 
-    public static function make(self $code, ...$operands): Instructions
+    public function definition(): Definition
     {
-        $definition = $code->definition();
+        return match ($this) {
+            self::CONSTANT,
+            self::JUMP_NOT_TRUTHY,
+            self::JUMP,
+            self::GET_GLOBAL,
+            self::SET_GLOBAL,
+            self::ARRAY,
+            self::HASH => new Definition($this->name, [2]),
+            self::ADD,
+            self::POP,
+            self::SUB,
+            self::MUL,
+            self::DIV,
+            self::TRUE,
+            self::FALSE,
+            self::EQUAL,
+            self::NOT_EQUAL,
+            self::GREATER_THAN,
+            self::MINUS,
+            self::BANG,
+            self::NULL,
+            self::INDEX,
+            self::CALL,
+            self::RETURN_VALUE,
+            self::RETURN => new Definition($this->name, []),
+        };
+    }
+
+    public function make(...$operands): Instructions
+    {
+        $definition = $this->definition();
 
         $instructionLength = 1;
         foreach ($definition->operandWidths as $width) {
@@ -18,7 +71,7 @@ enum Code: int
         }
 
         $instruction = new Instructions([]);
-        $instruction[] = $code->value;
+        $instruction[] = $this->value;
 
         foreach ($operands as $i => $operand) {
             $width = $definition->operandWidths[$i];
@@ -52,10 +105,8 @@ enum Code: int
         return [$operands, $offset];
     }
 
-    public function definition(): Definition
+    public function readInt(Instructions $instructions, int $offset): int
     {
-        return match ($this) {
-            self::CONSTANT => new Definition($this->name, [2]),
-        };
+        return ($instructions[$offset] << 0x8) | $instructions[$offset + 1];
     }
 }
