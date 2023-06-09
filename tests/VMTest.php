@@ -14,7 +14,7 @@ it('runs correctly', function (string $input, $expected) {
 
     $stackElem = $vm->lastPoppedStackElem();
 
-    expect($stackElem)->toBeInstanceOf($expected[0]);
+    expect($stackElem)->toBeInstanceOf($expected[0], print_r($stackElem, true));
     if ($expected[0] == EvalArray::class) {
         expect($stackElem->elements)->toHaveCount(count($expected[1]));
         foreach ($stackElem->elements as $i => $element) {
@@ -122,7 +122,15 @@ it('runs correctly', function (string $input, $expected) {
     ['let sum = fn(a, b) { let c = a + b; c }; sum(1, 2)', [EvalInteger::class, 3]],
     ['let sum = fn(a, b) { let c = a + b; c }; sum(1, 2) + sum(3, 4)', [EvalInteger::class, 10]],
     ['let sum = fn(a, b) { let c = a + b; c }; let outer = fn() { sum(1, 2) + sum(3, 4) }; outer()', [EvalInteger::class, 10]],
-    ['let globalNum = 10; let sum = fn(a, b) { let c = a + b; c + globalNum }; let outer = fn() { sum(1, 2) + sum(3, 4) + globalNum }; outer() + globalNum', [EvalInteger::class, 50]]
+    ['let globalNum = 10; let sum = fn(a, b) { let c = a + b; c + globalNum }; let outer = fn() { sum(1, 2) + sum(3, 4) + globalNum }; outer() + globalNum', [EvalInteger::class, 50]],
+    ['match (1) { 1 -> true }', [EvalBoolean::class, true]],
+    ['match (2) { 2 -> 1 }', [EvalInteger::class, 1]],
+    ['match (true) { true -> 1 }', [EvalInteger::class, 1]],
+    ['match ("on" + "e") { "one" -> 1 }', [EvalInteger::class, 1]],
+    ['match (true) { 1 > 2 -> 2, 1 < 2 -> 1 }', [EvalInteger::class, 1]],
+    ['match (1) { 2 -> 1 }', [EvalNull::class]],
+    ['match (5 - 4) { 3 - 2 -> 1 + 1 }', [EvalInteger::class, 2]],
+    ['match (fn() { true }()) { 1 != 2 -> 1 + 1 }', [EvalInteger::class, 2]],
 ]);
 
 it('errors', function ($input, $message) {

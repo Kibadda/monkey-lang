@@ -13,6 +13,7 @@ use Monkey\Ast\Expression\IfExpression;
 use Monkey\Ast\Expression\IndexExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
+use Monkey\Ast\Expression\MatchLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
 use Monkey\Ast\Expression\StringLiteral;
 use Monkey\Ast\Node;
@@ -132,256 +133,294 @@ class Evaluator
 
     public function eval(Node $node): ?EvalObject
     {
-        return match ($node::class) {
-            Program::class => $this->evalProgram($node),
-            ExpressionStatement::class => $this->eval($node->value),
-            IntegerLiteral::class => new EvalInteger($node->value),
-            Boolean::class => $this->boolean($node->value),
-            StringLiteral::class => new EvalString($node->value),
-            PrefixExpression::class => call_user_func(function () use ($node) {
-                $right = $this->eval($node->right);
+        if ($node instanceof Program) {
+            $result = null;
 
-                if ($this->isError($right)) {
-                    return $right;
+            foreach ($node->statements as $statement) {
+                $result = $this->eval($statement);
+                if ($result instanceof EvalError) {
+                    return $result;
                 }
 
-                return $this->evalPrefixExpression($node->operator, $right);
-            }),
-            InfixExpression::class => call_user_func(function () use ($node) {
-                $left = $this->eval($node->left);
+                if ($result instanceof EvalReturn) {
+                    return $result->value;
+                }
+            }
 
-                if ($this->isError($left)) {
-                    return $left;
+            return $result;
+        } else if ($node instanceof ExpressionStatement) {
+            return $this->eval($node->value);
+        } else if ($node instanceof IntegerLiteral) {
+            return new EvalInteger($node->value);
+        } else if ($node instanceof Boolean) {
+            return $this->singletons[$node->value];
+        } else if ($node instanceof StringLiteral) {
+            return new EvalString($node->value);
+        } else if ($node instanceof PrefixExpression) {
+            $right = $this->eval($node->right);
+            if ($this->isError($right)) {
+                return $right;
+            }
+
+            return match ($node->operator) {
+                '!' => match ($right) {
+                    $this->singletons[true] => $this->singletons[false],
+                    $this->singletons[false] => $this->singletons[true],
+                    $this->singletons[null] => $this->singletons[true],
+                    default => $this->singletons[false],
+                },
+                '-' => call_user_func(function () use ($right) {
+                    if ($right->type() != EvalType::INTEGER) {
+                        return new EvalError("unknown operator: -{$right->type()->name}");
+                    }
+
+                    return new EvalInteger(-$right->value);
+                }),
+                default => new EvalError("unknown operator: {$node->operator}{$right->type()->name}"),
+            };;
+        } else if ($node instanceof InfixExpression) {
+            $left = $this->eval($node->left);
+            if ($this->isError($left)) {
+                return $left;
+            }
+
+            $right = $this->eval($node->right);
+            if ($this->isError($right)) {
+                return $right;
+            }
+
+            return match (true) {
+                $left->type() == EvalType::INTEGER && $right->type() == EvalType::INTEGER => match ($node->operator) {
+                    '+' => new EvalInteger($left->value + $right->value),
+                    '-' => new EvalInteger($left->value - $right->value),
+                    '/' => new EvalInteger($left->value / $right->value),
+                    '*' => new EvalInteger($left->value * $right->value),
+                    '<' => $this->singletons[$left->value < $right->value],
+                    '>' => $this->singletons[$left->value > $right->value],
+                    '==' => $this->singletons[$left->value == $right->value],
+                    '!=' => $this->singletons[$left->value != $right->value],
+                    default => $this->singletons[null],
+                },
+                $node->operator == '==' => $this->singletons[$left->value == $right->value],
+                $node->operator == '!=' => $this->singletons[$left->value != $right->value],
+                $left->type() != $right->type() => new EvalError("type mismatch: {$left->type()->name} {$node->operator} {$right->type()->name}"),
+                $left->type() == EvalType::STRING && $right->type() == EvalType::STRING => match ($node->operator) {
+                    '+' => new EvalString($left->value . $right->value),
+                    '<' => $this->singletons[$left->value < $right->value],
+                    '>' => $this->singletons[$left->value > $right->value],
+                    '==' => $this->singletons[$left->value == $right->value],
+                    '!=' => $this->singletons[$left->value != $right->value],
+                    default => new EvalError("unknown operator: {$left->type()->name} {$node->operator} {$right->type()->name}"),
+                },
+                default => new EvalError("unknown operator: {$left->type()->name} {$node->operator} {$right->type()->name}"),
+            };
+        } else if ($node instanceof BlockStatement) {
+            $result = null;
+
+            foreach ($node->statements as $statement) {
+                $result = $this->eval($statement);
+                if ($this->isError($result)) {
+                    return $result;
                 }
 
-                $right = $this->eval($node->right);
+                if ($result->type() == EvalType::RETURN) {
+                    return $result;
+                }
+            }
 
-                if ($this->isError($right)) {
-                    return $right;
+            return $result;
+        } else if ($node instanceof IfExpression) {
+            $condition = $this->eval($node->condition);
+
+            if ($this->isError($condition)) {
+                return $condition;
+            }
+
+            return match (true) {
+                $condition != $this->singletons[false] && $condition != $this->singletons[null] => $this->eval($node->consequence),
+                !is_null($node->alternative) => $this->eval($node->alternative),
+                default => $this->singletons[null],
+            };
+        } else if ($node instanceof ReturnStatement) {
+            $value = $this->eval($node->value);
+            if ($this->isError($value)) {
+                return $value;
+            }
+
+            return new EvalReturn($value);
+        } else if ($node instanceof LetStatement) {
+            $value = $this->eval($node->value);
+            if ($this->isError($value)) {
+                return $value;
+            }
+
+            $this->environment->set($node->name->value, $value);
+            return null;
+        } else if ($node instanceof Identifier) {
+            $value = $this->environment->get($node->value);
+
+            if ($value) {
+                return $value;
+            }
+
+            $builtin = $this->builtins->getByName($node->value);
+            if (!empty($builtin)) {
+                return $builtin;
+            }
+
+            return new EvalError("identifier not found: {$node->value}");
+        } else if ($node instanceof FunctionLiteral) {
+            return new EvalFunction($node->parameters, $node->body, $this->environment);
+        } else if ($node instanceof CallExpression) {
+            if ($node->function->tokenLiteral() == 'quote') {
+                return new EvalQuote($node->arguments[0]->modify(function (Node $node): Node {
+                    if (!$node instanceof CallExpression || $node->function->tokenLiteral() != 'unquote') {
+                        return $node;
+                    }
+
+                    if (!$node instanceof CallExpression) {
+                        return $node;
+                    }
+
+                    if (count($node->arguments) != 1) {
+                        return $node;
+                    }
+
+                    $unquoted = $this->eval($node->arguments[0]);
+                    if ($unquoted instanceof EvalInteger) {
+                        return new IntegerLiteral(new Token(Type::INT, $unquoted->value), $unquoted->value, $unquoted->value);
+                    } else if ($unquoted instanceof EvalBoolean) {
+                        return new Boolean($unquoted->value ? new Token(Type::TRUE, 'true') : new Token(Type::FALSE, 'false'), $unquoted->value);
+                    } else if ($unquoted instanceof EvalQuote) {
+                        return $unquoted->node;
+                    } else {
+                        return null;
+                    }
+                }));
+            }
+
+            $function = $this->eval($node->function);
+            if ($this->isError($function)) {
+                return $function;
+            }
+
+            $arguments = $this->evalExpressions($node->arguments);
+            if (count($arguments) == 1 && $this->isError($arguments[0])) {
+                return $arguments[0];
+            }
+
+            if ($function instanceof EvalFunction) {
+                $oldEnv = $this->environment;
+
+                $this->environment = new Environment($function->environment);
+
+                foreach ($function->parameters as $i => $parameter) {
+                    $this->environment->set($parameter->value, $arguments[$i]);
                 }
 
-                return $this->evalInfixExpression($left, $node->operator, $right);
-            }),
-            BlockStatement::class => $this->evalBlockStatement($node),
-            IfExpression::class => $this->evalIfExpression($node),
-            ReturnStatement::class => call_user_func(function () use ($node) {
-                $value = $this->eval($node->value);
+                $evaluated = $this->eval($function->body);
+                $this->environment = $oldEnv;
 
+                if ($evaluated instanceof EvalReturn) {
+                    return $evaluated->value;
+                }
+
+                return $evaluated;
+            } else if ($function instanceof EvalBuiltin) {
+                return ($function->builtinFunction)(...$arguments) ?: $this->singletons[null];
+            } else {
+                return new EvalError("not a function: {$function->type()}");
+            }
+        } else if ($node instanceof ArrayLiteral) {
+            $elements = $this->evalExpressions($node->elements);
+            if (count($elements) == 1 && $this->isError($elements[0])) {
+                return $elements[0];
+            }
+
+            return new EvalArray($elements);
+        } else if ($node instanceof IndexExpression) {
+            $left = $this->eval($node->left);
+            if ($this->isError($left)) {
+                return $left;
+            }
+
+            $index = $this->eval($node->index);
+            if ($this->isError($left)) {
+                return $index;
+            }
+
+            return match (true) {
+                $left->type() == EvalType::ARRAY && $index->type() == EvalType::INTEGER => call_user_func(function () use ($left, $index) {
+                    $i = $index->value;
+                    $max = count($left->elements) - 1;
+
+                    if ($i < 0 || $i > $max) {
+                        return $this->singletons[null];
+                    }
+
+                    return $left->elements[$i];
+                }),
+                $left->type() == EvalType::HASH => call_user_func(function () use ($left, $index) {
+                    if (!$index instanceof HashKey) {
+                        return new EvalError("unusable as hash key: {$index->type()->name}");
+                    }
+
+                    if (empty($left->pairs[$index->hashKey()])) {
+                        return $this->singletons[null];
+                    }
+
+                    return $left->pairs[$index->hashKey()][1];
+                }),
+                default => new EvalError("index operator not supported: {$left->type()->name}"),
+            };
+        } else if ($node instanceof HashLiteral) {
+            $pairs = [];
+
+            foreach ($node->pairs as $pair) {
+                $key = $this->eval($pair[0]);
+                if ($this->isError($key)) {
+                    return $key;
+                }
+                if (!$key instanceof HashKey) {
+                    return new EvalError("unusable as hash key: {$key->type()->name}");
+                }
+
+                $value = $this->eval($pair[1]);
                 if ($this->isError($value)) {
                     return $value;
                 }
 
-                return new EvalReturn($value);
-            }),
-            LetStatement::class => call_user_func(function () use ($node) {
-                $value = $this->eval($node->value);
+                $pairs[$key->hashKey()] = [$key, $value];
+            }
 
-                if ($this->isError($value)) {
-                    return $value;
+            return new EvalHash($pairs);
+        } else if ($node instanceof MatchLiteral) {
+            $subject = $this->eval($node->subject);
+            if ($this->isError($subject)) {
+                return $subject;
+            }
+
+            foreach ($node->branches as $branch) {
+                $condition = $this->eval($branch->condition);
+                if ($this->isError($condition)) {
+                    return $condition;
                 }
 
-                $this->environment->set($node->name->value, $value);
-            }),
-            Identifier::class => $this->evalIdentifier($node),
-            FunctionLiteral::class => call_user_func(function () use ($node) {
-                $parameters = $node->parameters;
-                $body = $node->body;
-                return new EvalFunction($parameters, $body, $this->environment);
-            }),
-            CallExpression::class => call_user_func(function () use ($node) {
-                if ($node->function->tokenLiteral() == 'quote') {
-                    return new EvalQuote($this->evalUnquoteCalls($node->arguments[0]));
+                if ($subject == $condition) {
+                    $consequence = $this->eval($branch->consequence);
+                    return $consequence;
                 }
+            }
 
-                $function = $this->eval($node->function);
-
-                if ($this->isError($function)) {
-                    return $function;
-                }
-
-                $arguments = $this->evalExpressions($node->arguments);
-
-                if (count($arguments) == 1 && $this->isError($arguments[0])) {
-                    return $arguments[0];
-                }
-
-                return $this->applyFunction($function, $arguments);
-            }),
-            ArrayLiteral::class => call_user_func(function () use ($node) {
-                $elements = $this->evalExpressions($node->elements);
-
-                if (count($elements) == 1 && $this->isError($elements[0])) {
-                    return $elements[0];
-                }
-
-                return new EvalArray($elements);
-            }),
-            IndexExpression::class => call_user_func(function () use ($node) {
-                $left = $this->eval($node->left);
-
-                if ($this->isError($left)) {
-                    return $left;
-                }
-
-                $index = $this->eval($node->index);
-
-                if ($this->isError($index)) {
-                    return $index;
-                }
-
-                return $this->evalIndexExpression($left, $index);
-            }),
-            HashLiteral::class => call_user_func(function () use ($node) {
-                $pairs = [];
-
-                foreach ($node->pairs as $pair) {
-                    $key = $this->eval($pair[0]);
-
-                    if ($this->isError($key)) {
-                        return $key;
-                    }
-
-
-                    if (!$key instanceof HashKey) {
-                        return new EvalError("unusable as hash key: {$key->type()->name}");
-                    }
-
-                    $value = $this->eval($pair[1]);
-
-                    if ($this->isError($value)) {
-                        return $value;
-                    }
-
-                    $pairs[$key->hashKey()] = [$key, $value];
-                }
-
-                return new EvalHash($pairs);
-            }),
-            default => null,
-        };
+            return $this->singletons[null];
+        } else {
+            return null;
+        }
     }
 
     private function isError(?EvalObject $evalObject): bool
     {
         return is_null($evalObject) ?: $evalObject->type() == EvalType::ERROR;
-    }
-
-    private function boolean(bool $bool): EvalBoolean
-    {
-        return $this->singletons[$bool];
-    }
-
-    private function evalProgram(Program $program): ?EvalObject
-    {
-        $result = null;
-
-        foreach ($program->statements as $statement) {
-            $result = $this->eval($statement);
-
-            if ($result instanceof EvalReturn) {
-                return $result->value;
-            }
-
-            if ($result instanceof EvalError) {
-                return $result;
-            }
-        }
-
-        return $result;
-    }
-
-    private function evalBlockStatement(BlockStatement $block): EvalObject
-    {
-        $result = null;
-
-        foreach ($block->statements as $statement) {
-            $result = $this->eval($statement);
-
-            if (!is_null($result) && ($result->type() == EvalType::RETURN || $result->type() == EvalType::ERROR)) {
-                return $result;
-            }
-        }
-
-        return $result;
-    }
-
-    private function evalPrefixExpression(string $operator, EvalObject $right): EvalObject
-    {
-        return match ($operator) {
-            '!' => match ($right) {
-                $this->singletons[true] => $this->boolean(false),
-                $this->singletons[false] => $this->boolean(true),
-                $this->singletons[null] => $this->boolean(true),
-                default => $this->boolean(false),
-            },
-            '-' => call_user_func(function () use ($right) {
-                if ($right->type() != EvalType::INTEGER) {
-                    return new EvalError("unknown operator: -{$right->type()->name}");
-                }
-
-                return new EvalInteger(-$right->value);
-            }),
-            default => new EvalError("unknown operator: {$operator}{$right->type()->name}"),
-        };
-    }
-
-    private function evalInfixExpression(EvalObject $left, string $operator, EvalObject $right): EvalObject
-    {
-        return match (true) {
-            $left->type() == EvalType::INTEGER && $right->type() == EvalType::INTEGER => match ($operator) {
-                '+' => new EvalInteger($left->value + $right->value),
-                '-' => new EvalInteger($left->value - $right->value),
-                '/' => new EvalInteger($left->value / $right->value),
-                '*' => new EvalInteger($left->value * $right->value),
-                '<' => $this->boolean($left->value < $right->value),
-                '>' => $this->boolean($left->value > $right->value),
-                '==' => $this->boolean($left->value == $right->value),
-                '!=' => $this->boolean($left->value != $right->value),
-                default => $this->singletons[null],
-            },
-            $operator == '==' => $this->boolean($left->value == $right->value),
-            $operator == '!=' => $this->boolean($left->value != $right->value),
-            $left->type() != $right->type() => new EvalError("type mismatch: {$left->type()->name} {$operator} {$right->type()->name}"),
-            $left->type() == EvalType::STRING && $right->type() == EvalType::STRING => match ($operator) {
-                '+' => new EvalString($left->value . $right->value),
-                '<' => $this->boolean($left->value < $right->value),
-                '>' => $this->boolean($left->value > $right->value),
-                '==' => $this->boolean($left->value == $right->value),
-                '!=' => $this->boolean($left->value != $right->value),
-                default => new EvalError("unknown operator: {$left->type()->name} {$operator} {$right->type()->name}"),
-            },
-            default => new EvalError("unknown operator: {$left->type()->name} {$operator} {$right->type()->name}"),
-        };
-    }
-
-    private function evalIfExpression(IfExpression $if): EvalObject
-    {
-        $condition = $this->eval($if->condition);
-
-        if ($this->isError($condition)) {
-            return $condition;
-        }
-
-        return match (true) {
-            $condition != $this->singletons[false] && $condition != $this->singletons[null] => $this->eval($if->consequence),
-            !is_null($if->alternative) => $this->eval($if->alternative),
-            default => $this->singletons[null],
-        };
-    }
-
-    private function evalIdentifier(Identifier $identifier): EvalObject
-    {
-        $value = $this->environment->get($identifier->value);
-
-        if ($value) {
-            return $value;
-        }
-
-        if (!empty($this->builtins[$identifier->value])) {
-            return $this->builtins[$identifier->value];
-        }
-
-        return new EvalError("identifier not found: {$identifier->value}");
     }
 
     /**
@@ -403,113 +442,5 @@ class Evaluator
         }
 
         return $result;
-    }
-
-    /**
-     * @param EvalObject[] $arguments
-     */
-    private function applyFunction(EvalObject $function, array $arguments): EvalObject
-    {
-        return match ($function::class) {
-            EvalFunction::class => call_user_func(function () use ($function, $arguments) {
-                $oldEnv = $this->environment;
-                $this->environment = $this->extendFunctionEnv($function, $arguments);
-                $evaluated = $this->eval($function->body);
-                $this->environment = $oldEnv;
-                return $this->unwrapReturnValue($evaluated);
-            }),
-            EvalBuiltin::class => ($function->builtinFunction)(...$arguments),
-            default => new EvalError("not a function: {$function->type()}"),
-        };
-    }
-
-    /**
-     * @param EvalObject[] $arguments
-     */
-    private function extendFunctionEnv(EvalFunction $function, array $arguments): Environment
-    {
-        $environment = new Environment($function->environment);
-
-        foreach ($function->parameters as $i => $parameter) {
-            $environment->set($parameter->value, $arguments[$i]);
-        }
-
-        return $environment;
-    }
-
-    private function unwrapReturnValue(EvalObject $evalObject): EvalObject
-    {
-        if ($evalObject instanceof EvalReturn) {
-            return $evalObject->value;
-        }
-
-        return $evalObject;
-    }
-
-    private function evalIndexExpression(EvalObject $left, EvalObject $index): ?EvalObject
-    {
-        return match (true) {
-            $left->type() == EvalType::ARRAY && $index->type() == EvalType::INTEGER => call_user_func(function () use ($left, $index) {
-                $i = $index->value;
-                $max = count($left->elements) - 1;
-
-                if ($i < 0 || $i > $max) {
-                    return $this->singletons[null];
-                }
-
-                return $left->elements[$i];
-            }),
-            $left->type() == EvalType::HASH => call_user_func(function () use ($left, $index) {
-                if (!$index instanceof HashKey) {
-                    return new EvalError("unusable as hash key: {$index->type()->name}");
-                }
-
-                if (empty($left->pairs[$index->hashKey()])) {
-                    return $this->singletons[null];
-                }
-
-                return $left->pairs[$index->hashKey()][1];
-            }),
-            default => new EvalError("index operator not supported: {$left->type()->name}"),
-        };
-    }
-
-    private function evalUnquoteCalls(Node $node): Node
-    {
-        return $node->modify(function (Node $node): Node {
-            if (!$this->isUnquotedCall($node)) {
-                return $node;
-            }
-
-            if (!$node instanceof CallExpression) {
-                return $node;
-            }
-
-            if (count($node->arguments) != 1) {
-                return $node;
-            }
-
-            $unquoted = $this->eval($node->arguments[0]);
-            return $this->convertObjectToAstNode($unquoted);
-        });
-    }
-
-    private function isUnquotedCall(Node $node): bool
-    {
-        if ($node instanceof CallExpression) {
-            return $node->function->tokenLiteral() == 'unquote';
-        }
-
-        return false;
-    }
-
-    private function convertObjectToAstNode(EvalObject $evalObject): ?Node
-    {
-        return match ($evalObject::class) {
-            EvalInteger::class => new IntegerLiteral(new Token(Type::INT, "{$evalObject->value}"), $evalObject->value, $evalObject->value),
-            EvalBoolean::class => new Boolean($evalObject->value ? new Token(Type::TRUE, 'true') : new Token(Type::FALSE, 'false'), $evalObject->value),
-            EvalQuote::class => $evalObject->node,
-            default => null,
-        };
     }
 }

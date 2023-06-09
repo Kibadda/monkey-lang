@@ -13,6 +13,7 @@ use Monkey\Ast\Expression\IfExpression;
 use Monkey\Ast\Expression\IndexExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
+use Monkey\Ast\Expression\MatchLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
 use Monkey\Ast\Expression\StringLiteral;
 use Monkey\Ast\Node;
@@ -184,6 +185,26 @@ class Compiler
             $this->compile($node->value);
 
             $this->emit(Code::RETURN_VALUE);
+        } else if ($node instanceof MatchLiteral) {
+            $endJumps = [];
+            foreach ($node->branches as $branch) {
+                $this->compile($node->subject);
+                $this->compile($branch->condition);
+                $this->emit(Code::EQUAL);
+                $jumpNotTruthyPosition = $this->emit(Code::JUMP_NOT_TRUTHY, 9999);
+                $this->compile($branch->consequence);
+                $endJumps[] = $this->emit(Code::JUMP, 9999);
+
+                $afterConsequencePosition = $this->currentInstructions()->count();
+                $this->changeOperand($jumpNotTruthyPosition, $afterConsequencePosition);
+            }
+
+            $this->emit(Code::NULL);
+
+            $afterBranchesPosition = $this->currentInstructions()->count();
+            foreach ($endJumps as $jump) {
+                $this->changeOperand($jump, $afterBranchesPosition);
+            }
         }
     }
 

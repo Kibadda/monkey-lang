@@ -34,6 +34,7 @@ enum Type
     case LBRACKET;
     case RBRACKET;
     case COLON;
+    case ARROW;
 
     case FUNCTION;
     case LET;
@@ -42,6 +43,7 @@ enum Type
     case IF;
     case ELSE;
     case RETURN;
+    case MATCH;
 
     case MACRO;
 
@@ -56,6 +58,7 @@ enum Type
             'else' => self::ELSE,
             'return' => self::RETURN,
             'macro' => self::MACRO,
+            'match' => self::MATCH,
             default => self::IDENTIFIER,
         };
     }

@@ -1,11 +1,11 @@
 <?php
 
-use Monkey\Code\Code;
-use Monkey\Compiler\Instructions;
+use Monkey\Lexer\Lexer;
+use Monkey\Parser\Parser;
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-$instructions = [Code::CONSTANT->make(0), Code::CONSTANT->make(1), Code::ADD->make(), Code::POP->make()];
+$lexer = new Lexer('match (a) { 1 -> true, "one" -> 2 + 2, };');
+$parser = new Parser($lexer);
 
-print_r(Instructions::from($instructions));
-print_r(new Instructions($instructions));
+$program = $parser->parseProgam();

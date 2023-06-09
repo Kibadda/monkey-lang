@@ -4,6 +4,7 @@ namespace Monkey\Parser;
 
 use Monkey\Ast\Expression\ArrayLiteral;
 use Monkey\Ast\Expression\Boolean;
+use Monkey\Ast\Expression\Branch;
 use Monkey\Ast\Expression\CallExpression;
 use Monkey\Ast\Expression\Expression;
 use Monkey\Ast\Expression\FunctionLiteral;
@@ -14,6 +15,7 @@ use Monkey\Ast\Expression\IndexExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
 use Monkey\Ast\Expression\MacroLiteral;
+use Monkey\Ast\Expression\MatchLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
 use Monkey\Ast\Expression\StringLiteral;
 use Monkey\Ast\Program;
@@ -172,6 +174,7 @@ class Parser
             Type::LBRACKET => $this->parseArrayLiteral(),
             Type::LBRACE => $this->parseHashLiteral(),
             Type::MACRO => $this->parseMacroLiteral(),
+            Type::MATCH => $this->parseMatchLiteral(),
             default => null,
         };
 
@@ -352,6 +355,79 @@ class Parser
         }
 
         return new MacroLiteral($token, $parameters, $this->parseBlockStatement());
+    }
+
+    private function parseMatchLiteral(): ?MatchLiteral
+    {
+        $token = $this->curToken;
+
+        if (!$this->expectPeek(Type::LPAREN)) {
+            return null;
+        }
+
+        $this->nextToken();
+        $subject = $this->parseExpression(Precedence::LOWEST);
+
+        print_r($subject);
+
+        if ($subject == null) {
+            return $subject;
+        }
+
+        if (!$this->expectPeek(Type::RPAREN) || !$this->expectPeek(Type::LBRACE)) {
+            return null;
+        }
+
+        $branches = $this->parseBranches();
+
+        if ($branches == null) {
+            return $branches;
+        }
+
+        return new MatchLiteral($token, $subject, $branches);
+    }
+
+    private function parseBranches(): ?array
+    {
+        if ($this->peekTokenIs(Type::RBRACE)) {
+            $this->nextToken();
+            return [];
+        }
+
+        $branches = [];
+
+        while (!$this->peekTokenIs(Type::RBRACE)) {
+            $this->nextToken();
+            $condition = $this->parseExpression(Precedence::LOWEST);
+
+            if ($condition == null) {
+                return $condition;
+            }
+
+            if (!$this->expectPeek(Type::ARROW)) {
+                return null;
+            }
+
+            $this->nextToken();
+
+            $consequence = $this->parseExpression(Precedence::LOWEST);
+
+            if ($consequence == null) {
+                return $consequence;
+            }
+
+            $branches[] = new Branch($condition, $consequence);
+
+            if ($this->peekTokenIs(Type::COMMA)) {
+                $this->nextToken();
+            }
+        }
+
+        if (!$this->expectPeek(Type::RBRACE)) {
+            return null;
+        }
+
+        return $branches;
     }
 
     private function parseFunctionParameters(): ?array

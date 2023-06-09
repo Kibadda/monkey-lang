@@ -34,6 +34,11 @@ it('tokenizes input', function () {
         {"foo": "bar"};
 
         macro(x, y) { x + y; };
+
+        match (a) {
+            1 -> true,
+            "one" -> 2,
+        };
     ';
 
     $tests = [
@@ -137,6 +142,21 @@ it('tokenizes input', function () {
         new Token(Type::PLUS, '+'),
         new Token(Type::IDENTIFIER, 'y'),
         new Token(Type::SEMICOLON, ';'),
+        new Token(Type::RBRACE, '}'),
+        new Token(Type::SEMICOLON, ';'),
+        new Token(Type::MATCH, 'match'),
+        new Token(Type::LPAREN, '('),
+        new Token(Type::IDENTIFIER, 'a'),
+        new Token(Type::RPAREN, ')'),
+        new Token(Type::LBRACE, '{'),
+        new Token(Type::INT, '1'),
+        new Token(Type::ARROW, '->'),
+        new Token(Type::TRUE, 'true'),
+        new Token(Type::COMMA, ','),
+        new Token(Type::STRING, 'one'),
+        new Token(Type::ARROW, '->'),
+        new Token(Type::INT, '2'),
+        new Token(Type::COMMA, ','),
         new Token(Type::RBRACE, '}'),
         new Token(Type::SEMICOLON, ';'),
         new Token(Type::EOF, ''),

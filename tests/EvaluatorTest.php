@@ -89,6 +89,7 @@ it('evaluates', function ($input, $eval, $value) {
     'string 2' => ['"Hello" + " " + "World!"', EvalString::class, 'Hello World!'],
     'array 1' => ['[1, 2 * 2, 3 + 3]', EvalArray::class, [1, 4, 6]],
     'hash 1' => ['{"one": 10 - 9, 2: true, false: "thr" + "ee"}', EvalHash::class, ['STRING:one' => 1, 'INTEGER:2' => true, 'BOOLEAN:false' => 'three']],
+    'match 1' => ['match (3 - 4) { 2 -> "two", 2 - 1 -> "one", 9 - 10 -> "minus" + "one" }', EvalString::class, 'minusone'],
 ]);
 
 it('handles errors', function ($input, $error) {

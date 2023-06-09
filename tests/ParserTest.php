@@ -11,6 +11,7 @@ use Monkey\Ast\Expression\IndexExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
 use Monkey\Ast\Expression\MacroLiteral;
+use Monkey\Ast\Expression\MatchLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
 use Monkey\Ast\Expression\StringLiteral;
 use Monkey\Ast\Program;
@@ -247,6 +248,18 @@ it('parses macros', function () {
         ],
         [
             [InfixExpression::class, [Identifier::class, 'x'], '+', [Identifier::class, 'y']],
+        ],
+    );
+});
+
+it('parses match', function () {
+    $program = createProgram('match (a) { 1 -> true, "one" -> 2 + 2, };');
+    expect($program->statements[0])->toBeExpressionStatement(
+        MatchLiteral::class,
+        [Identifier::class, 'a'],
+        [
+            [[IntegerLiteral::class, 1], [Boolean::class, true]],
+            [[StringLiteral::class, 'one'], [InfixExpression::class, [IntegerLiteral::class, 2], '+', [IntegerLiteral::class, 2]]],
         ],
     );
 });

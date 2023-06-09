@@ -35,6 +35,7 @@ use Monkey\Ast\Expression\IndexExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
 use Monkey\Ast\Expression\MacroLiteral;
+use Monkey\Ast\Expression\MatchLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
 use Monkey\Ast\Expression\StringLiteral;
 use Monkey\Ast\Program;
@@ -79,6 +80,8 @@ expect()->extend('toBeExpression', function (string $expression, ...$args) {
         CallExpression::class => expect($this->value)->toBeCallExpression(...$args),
         IndexExpression::class => expect($this->value)->toBeIndexExpression(...$args),
         MacroLiteral::class => expect($this->value)->toBeMacroLiteral(...$args),
+        MatchLiteral::class => expect($this->value)->toBeMatchLiteral(...$args),
+        default => expect(false)->toBeTrue(json_encode($expression)),
     };
 });
 
@@ -183,6 +186,17 @@ expect()->extend('toBeMacroLiteral', function (array $parameters, array $body) {
     expect($this->value->body->statements)->toHaveCount(count($body));
     foreach ($this->value->body->statements as $i => $statement) {
         expect($statement)->toBeExpressionStatement(...$body[$i]);
+    }
+});
+
+expect()->extend('toBeMatchLiteral', function (array $subject, array $branches) {
+    expect($this->value)->toBeInstanceOf(MatchLiteral::class);
+    expect($this->value->subject)->toBeInstanceOf($subject[0]);
+    expect($this->value->subject->value)->toBe($subject[1]);
+    expect($this->value->branches)->toHaveCount(count($branches));
+    foreach ($this->value->branches as $i => $branch) {
+        expect($branch->condition)->toBeExpression(...$branches[$i][0]);
+        expect($branch->consequence)->toBeExpression(...$branches[$i][1]);
     }
 });
 

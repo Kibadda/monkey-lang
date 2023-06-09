@@ -248,6 +248,11 @@ it('compiles', function (string $input, array $expectedConstants, array $expecte
         [[EvalCompiledFunction::class, [Code::GET_LOCAL->make(0), Code::POP->make(), Code::GET_LOCAL->make(1), Code::POP->make(), Code::GET_LOCAL->make(2), Code::RETURN_VALUE->make()]], [EvalInteger::class, 24], [EvalInteger::class, 25], [EvalInteger::class, 26]],
         [Code::CONSTANT->make(0), Code::SET_GLOBAL->make(0), Code::GET_GLOBAL->make(0), Code::CONSTANT->make(1), Code::CONSTANT->make(2), Code::CONSTANT->make(3), Code::CALL->make(3), Code::POP->make()],
     ],
+    [
+        'match (1) { 1 -> true, 2 -> false, 3 -> "one" }',
+        [[EvalInteger::class, 1], [EvalInteger::class, 1], [EvalInteger::class, 1], [EvalInteger::class, 2], [EvalInteger::class, 1], [EvalInteger::class, 3], [EvalString::class, 'one']],
+        [Code::CONSTANT->make(0), Code::CONSTANT->make(1), Code::EQUAL->make(), Code::JUMP_NOT_TRUTHY->make(14), Code::TRUE->make(), Code::JUMP->make(45), Code::CONSTANT->make(2), Code::CONSTANT->make(3), Code::EQUAL->make(), Code::JUMP_NOT_TRUTHY->make(28), Code::FALSE->make(), Code::JUMP->make(45), Code::CONSTANT->make(4), Code::CONSTANT->make(5), Code::EQUAL->make(), Code::JUMP_NOT_TRUTHY->make(44), Code::CONSTANT->make(6), Code::JUMP->make(45), Code::NULL->make(), Code::POP->make()],
+    ]
 ]);
 
 it('stringyfies', function () {

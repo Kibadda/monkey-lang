@@ -117,7 +117,15 @@ class Lexer
             ')' => new Token(Type::RPAREN, $this->ch),
             ',' => new Token(Type::COMMA, $this->ch),
             '+' => new Token(Type::PLUS, $this->ch),
-            '-' => new Token(Type::MINUS, $this->ch),
+            '-' => call_user_func(function () {
+                if ($this->peekChar() == '>') {
+                    $ch = $this->ch;
+                    $this->readChar();
+                    return new Token(Type::ARROW, "{$ch}{$this->ch}");
+                }
+
+                return new Token(Type::MINUS, $this->ch);
+            }),
             '/' => new Token(Type::SLASH, $this->ch),
             '*' => new Token(Type::ASTERISK, $this->ch),
             '!' => call_user_func(function () {
