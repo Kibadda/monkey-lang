@@ -1,6 +1,6 @@
 <?php
 
-namespace Monkey\Evaluator\Object;
+namespace Monkey\Object;
 
 use Monkey\Ast\Expression\Identifier;
 use Monkey\Ast\Statement\BlockStatement;

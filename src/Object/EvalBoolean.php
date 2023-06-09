@@ -1,6 +1,6 @@
 <?php
 
-namespace Monkey\Evaluator\Object;
+namespace Monkey\Object;
 
 class EvalBoolean implements EvalObject, HashKey
 {

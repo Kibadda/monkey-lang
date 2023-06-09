@@ -2,16 +2,16 @@
 
 use Monkey\Evaluator\Environment;
 use Monkey\Evaluator\Evaluator;
-use Monkey\Evaluator\Object\EvalArray;
-use Monkey\Evaluator\Object\EvalBoolean;
-use Monkey\Evaluator\Object\EvalError;
-use Monkey\Evaluator\Object\EvalFunction;
-use Monkey\Evaluator\Object\EvalHash;
-use Monkey\Evaluator\Object\EvalInteger;
-use Monkey\Evaluator\Object\EvalMacro;
-use Monkey\Evaluator\Object\EvalNull;
-use Monkey\Evaluator\Object\EvalQuote;
-use Monkey\Evaluator\Object\EvalString;
+use Monkey\Object\EvalArray;
+use Monkey\Object\EvalBoolean;
+use Monkey\Object\EvalError;
+use Monkey\Object\EvalFunction;
+use Monkey\Object\EvalHash;
+use Monkey\Object\EvalInteger;
+use Monkey\Object\EvalMacro;
+use Monkey\Object\EvalNull;
+use Monkey\Object\EvalQuote;
+use Monkey\Object\EvalString;
 
 it('evaluates', function ($input, $eval, $value) {
     $program = createProgram($input);

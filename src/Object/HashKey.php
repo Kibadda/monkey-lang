@@ -1,6 +1,6 @@
 <?php
 
-namespace Monkey\Evaluator\Object;
+namespace Monkey\Object;
 
 interface HashKey
 {

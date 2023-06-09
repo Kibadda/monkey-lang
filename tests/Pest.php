@@ -41,8 +41,10 @@ use Monkey\Ast\Program;
 use Monkey\Ast\Statement\ExpressionStatement;
 use Monkey\Ast\Statement\LetStatement;
 use Monkey\Ast\Statement\ReturnStatement;
+use Monkey\Compiler\Compiler;
 use Monkey\Lexer\Lexer;
 use Monkey\Parser\Parser;
+use Monkey\VM\VM;
 
 expect()->extend('toBeLetStatement', function (string $name, $value) {
     expect($this->value)->toBeInstanceOf(LetStatement::class);
@@ -210,14 +212,26 @@ expect()->extend('toBeIndexExpression', function ($left, $index) {
 |
 */
 
-function createProgram(string $input, int $count = 1): Program
+function createProgram(string $input): Program
 {
     $lexer = Lexer::new($input);
     $parser = Parser::new($lexer);
     $program = $parser->parseProgam();
 
-    expect($parser->errors)->toHaveCount(0);
-    // expect($program->statements)->toHaveCount($count);
+    expect($parser->errors)->toHaveCount(0, json_encode($parser->errors));
 
     return $program;
+}
+
+function runVM(string $input): VM
+{
+    $program = createProgram($input);
+
+    $compiler = new Compiler();
+    expect($compiler->compile($program))->not->toThrow(Exception::class);
+
+    $vm = VM::new($compiler);
+    expect($vm->run())->not->toThrow(Exception::class);
+
+    return $vm;
 }

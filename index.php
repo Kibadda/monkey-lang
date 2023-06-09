@@ -7,7 +7,7 @@ use Monkey\VM\VM;
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-$lexer = Lexer::new('fn(){}');
+$lexer = Lexer::new('let one = fn() { 1 }; let two = fn() { 2 }; ');
 $parser = Parser::new($lexer);
 $program = $parser->parseProgam();
 

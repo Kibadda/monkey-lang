@@ -5,46 +5,55 @@ namespace Monkey\VM;
 use Exception;
 use Monkey\Code\Code;
 use Monkey\Compiler\Compiler;
-use Monkey\Compiler\Instructions;
-use Monkey\Evaluator\Object\EvalArray;
-use Monkey\Evaluator\Object\EvalBoolean;
-use Monkey\Evaluator\Object\EvalHash;
-use Monkey\Evaluator\Object\EvalInteger;
-use Monkey\Evaluator\Object\EvalNull;
-use Monkey\Evaluator\Object\EvalObject;
-use Monkey\Evaluator\Object\EvalString;
-use Monkey\Evaluator\Object\EvalType;
-use Monkey\Evaluator\Object\HashKey;
+use Monkey\Object\EvalArray;
+use Monkey\Object\EvalBoolean;
+use Monkey\Object\EvalCompiledFunction;
+use Monkey\Object\EvalHash;
+use Monkey\Object\EvalInteger;
+use Monkey\Object\EvalNull;
+use Monkey\Object\EvalObject;
+use Monkey\Object\EvalString;
+use Monkey\Object\EvalType;
+use Monkey\Object\HashKey;
 
 class VM
 {
     private const STACK_SIZE = 2048;
     private const GLOBALS_SIZE = 65536;
+    private const FRAMES_SIZE = 1024;
 
     public static function new(Compiler $compiler): self
     {
-        return new self($compiler->constants, $compiler->instructions);
+        $mainFunction = new EvalCompiledFunction($compiler->currentInstructions(), 0, 0);
+        $mainFrame = new Frame($mainFunction, 0);
+
+        return new self($compiler->constants, [], 0, [], [$mainFrame], 1);
     }
 
     public static function newWithGlobalsStore(Compiler $compiler, array $globals): self
     {
-        return new self($compiler->constants, $compiler->instructions, globals: $globals);
+        $mainFunction = new EvalCompiledFunction($compiler->currentInstructions(), 0, 0);
+        $mainFrame = new Frame($mainFunction, 0);
+
+        return new self($compiler->constants, [], 0, $globals, [$mainFrame], 1);
     }
 
     /**
      * @param EvalObject[] $constants
      * @param EvalObject[] $stack
      * @param EvalObject[] $globals
+     * @param Frame[] $frames
      */
-    public function __construct(
+    private function __construct(
         public array $constants,
-        public Instructions $instructions,
         public array $stack = [],
         public int $sp = 0,
+        public array $globals = [],
+        public array $frames = [],
+        public int $framesIndex = 0,
         public EvalBoolean $true = new EvalBoolean(true),
         public EvalBoolean $false = new EvalBoolean(false),
         public EvalNull $null = new EvalNull(),
-        public array $globals = [],
     ) {
     }
 
@@ -55,13 +64,16 @@ class VM
 
     public function run(): void
     {
-        for ($ip = 0; $ip < $this->instructions->count(); $ip++) {
-            $code = Code::tryFrom($this->instructions[$ip]);
+        while ($this->currentFrame()->ip < $this->currentFrame()->instructions()->count() - 1) {
+            $this->currentFrame()->ip++;
+            $ip = $this->currentFrame()->ip;
+            $instructions = $this->currentFrame()->instructions();
+            $code = Code::tryFrom($instructions[$ip]);
 
             match ($code) {
-                Code::CONSTANT => call_user_func(function () use (&$ip, $code) {
-                    $constIndex = $code->readInt($this->instructions, $ip + 1);
-                    $ip += 2;
+                Code::CONSTANT => call_user_func(function () use ($ip, $code, $instructions) {
+                    $constIndex = $code->readInt($instructions, $ip + 1);
+                    $this->currentFrame()->ip += 2;
 
                     $this->push($this->constants[$constIndex]);
                 }),
@@ -131,35 +143,35 @@ class VM
 
                     $this->push(new EvalInteger(-$operand->value));
                 }),
-                Code::JUMP => call_user_func(function () use (&$ip, $code) {
-                    $position = $code->readInt($this->instructions, $ip + 1);
-                    $ip = $position - 1;
+                Code::JUMP => call_user_func(function () use ($ip, $code, $instructions) {
+                    $position = $code->readInt($instructions, $ip + 1);
+                    $this->currentFrame()->ip = $position - 1;
                 }),
-                Code::JUMP_NOT_TRUTHY => call_user_func(function () use (&$ip, $code) {
-                    $position = $code->readInt($this->instructions, $ip + 1);
-                    $ip += 2;
+                Code::JUMP_NOT_TRUTHY => call_user_func(function () use ($ip, $code, $instructions) {
+                    $position = $code->readInt($instructions, $ip + 1);
+                    $this->currentFrame()->ip += 2;
 
                     $condition = $this->pop();
                     if (($condition instanceof EvalBoolean && !$condition->value) || $condition instanceof EvalNull) {
-                        $ip = $position - 1;
+                        $this->currentFrame()->ip = $position - 1;
                     }
                 }),
                 Code::NULL => $this->push($this->null),
-                Code::SET_GLOBAL => call_user_func(function () use (&$ip, $code) {
-                    $globalIndex = $code->readInt($this->instructions, $ip + 1);
-                    $ip += 2;
+                Code::SET_GLOBAL => call_user_func(function () use ($ip, $code, $instructions) {
+                    $globalIndex = $code->readInt($instructions, $ip + 1);
+                    $this->currentFrame()->ip += 2;
 
                     $this->globals[$globalIndex] = $this->pop();
                 }),
-                Code::GET_GLOBAL => call_user_func(function () use (&$ip, $code) {
-                    $globalIndex = $code->readInt($this->instructions, $ip + 1);
-                    $ip += 2;
+                Code::GET_GLOBAL => call_user_func(function () use ($ip, $code, $instructions) {
+                    $globalIndex = $code->readInt($instructions, $ip + 1);
+                    $this->currentFrame()->ip += 2;
 
                     $this->push($this->globals[$globalIndex]);
                 }),
-                Code::ARRAY => call_user_func(function () use (&$ip, $code) {
-                    $numElements = $code->readInt($this->instructions, $ip + 1);
-                    $ip += 2;
+                Code::ARRAY => call_user_func(function () use ($ip, $code, $instructions) {
+                    $numElements = $code->readInt($instructions, $ip + 1);
+                    $this->currentFrame()->ip += 2;
 
                     $elements = [];
                     for ($i = $this->sp - $numElements; $i < $this->sp; $i++) {
@@ -172,9 +184,9 @@ class VM
 
                     $this->push($array);
                 }),
-                Code::HASH => call_user_func(function () use (&$ip, $code) {
-                    $numElements = $code->readInt($this->instructions, $ip + 1);
-                    $ip += 2;
+                Code::HASH => call_user_func(function () use ($ip, $code, $instructions) {
+                    $numElements = $code->readInt($instructions, $ip + 1);
+                    $this->currentFrame()->ip += 2;
 
                     $pairs = [];
                     for ($i = $this->sp - $numElements; $i < $this->sp; $i += 2) {
@@ -221,6 +233,56 @@ class VM
                         throw new Exception("index operator not supported: {$left->type()->name}");
                     }
                 }),
+                Code::CALL => call_user_func(function () use ($ip, $instructions) {
+                    $numArguments = $instructions[$ip + 1];
+                    $this->currentFrame()->ip += 1;
+
+                    $function = $this->stack[$this->sp - 1 - $numArguments];
+
+                    if (!$function instanceof EvalCompiledFunction) {
+                        throw new Exception('calling non-function');
+                    }
+
+                    if ($numArguments != $function->numParameters) {
+                        throw new Exception("wrong number of arguments: want={$function->numParameters}, got={$numArguments}");
+                    }
+
+                    $frame = new Frame($function, $this->sp - $numArguments);
+                    $this->pushFrame($frame);
+                    $this->sp = $frame->basePointer + $function->numLocals;
+                }),
+                Code::RETURN_VALUE => call_user_func(function () {
+                    $returnValue = $this->pop();
+
+                    $frame = $this->popFrame();
+                    $this->sp = $frame->basePointer - 1;
+
+                    $this->push($returnValue);
+                }),
+                Code::RETURN => call_user_func(function () {
+                    $frame = $this->popFrame();
+                    $this->sp = $frame->basePointer - 1;
+
+                    $this->push($this->null);
+                }),
+                Code::SET_LOCAL => call_user_func(function () use ($ip, $instructions) {
+                    $localIndex = $instructions[$ip + 1];
+                    $this->currentFrame()->ip += 1;
+
+                    $frame = $this->currentFrame();
+
+                    $this->stack[$frame->basePointer + $localIndex] = $this->pop();
+                }),
+                Code::GET_LOCAL => call_user_func(function () use ($ip, $instructions) {
+                    $localIndex = $instructions[$ip + 1];
+                    $this->currentFrame()->ip += 1;
+
+                    $frame = $this->currentFrame();
+
+                    $this->push($this->stack[$frame->basePointer + $localIndex]);
+                }),
+                default => null,
+                // default => throw new Exception("code not found for int: {$instructions[$ip]}"),
             };
         }
     }
@@ -245,5 +307,22 @@ class VM
     public function lastPoppedStackElem(): EvalObject
     {
         return $this->stack[$this->sp];
+    }
+
+    public function currentFrame(): Frame
+    {
+        return $this->frames[$this->framesIndex - 1];
+    }
+
+    public function pushFrame(Frame $frame): void
+    {
+        $this->frames[$this->framesIndex] = $frame;
+        $this->framesIndex++;
+    }
+
+    public function popFrame(): Frame
+    {
+        $this->framesIndex--;
+        return $this->frames[$this->framesIndex];
     }
 }

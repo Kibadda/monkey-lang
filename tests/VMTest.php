@@ -1,26 +1,13 @@
 <?php
 
 use Monkey\Compiler\Compiler;
-use Monkey\Evaluator\Object\EvalArray;
-use Monkey\Evaluator\Object\EvalBoolean;
-use Monkey\Evaluator\Object\EvalHash;
-use Monkey\Evaluator\Object\EvalInteger;
-use Monkey\Evaluator\Object\EvalNull;
-use Monkey\Evaluator\Object\EvalString;
+use Monkey\Object\EvalArray;
+use Monkey\Object\EvalBoolean;
+use Monkey\Object\EvalHash;
+use Monkey\Object\EvalInteger;
+use Monkey\Object\EvalNull;
+use Monkey\Object\EvalString;
 use Monkey\VM\VM;
-
-function runVM(string $input): VM
-{
-    $program = createProgram($input);
-
-    $compiler = new Compiler();
-    expect($compiler->compile($program))->not->toThrow(Exception::class);
-
-    $vm = VM::new($compiler);
-    expect($vm->run())->not->toThrow(Exception::class);
-
-    return $vm;
-}
 
 it('runs correctly', function (string $input, $expected) {
     $vm = runVM($input);
@@ -116,4 +103,43 @@ it('runs correctly', function (string $input, $expected) {
     ['{1: 1, 2: 2}[2]', [EvalInteger::class, 2]],
     ['{1: 1}[0]', [EvalNull::class]],
     ['{}[0]', [EvalNull::class]],
+    ['let fivePlusTen = fn() { 5 + 10 }; fivePlusTen()', [EvalInteger::class, 15]],
+    ['let one = fn() { 1 }; let two = fn() { 2 }; one() + two()', [EvalInteger::class, 3]],
+    ['let a = fn() { 1 }; let b = fn() { a() + 1 }; let c = fn() { b() + 1 }; c()', [EvalInteger::class, 3]],
+    ['let earlyExit = fn() { return 99; 100 }; earlyExit()', [EvalInteger::class, 99]],
+    ['let earlyExit = fn() { return 99; return 100 }; earlyExit()', [EvalInteger::class, 99]],
+    ['let noReturn = fn() {}; noReturn()', [EvalNull::class]],
+    ['let noReturn = fn() {}; let noReturnTwo = fn() { noReturn() }; noReturn(); noReturnTwo()', [EvalNull::class]],
+    ['let retunsOne = fn() { 1 }; let returnsOneReturner = fn() { retunsOne }; returnsOneReturner()()', [EvalInteger::class, 1]],
+    ['let one = fn() { let one = 1; one }; one()', [EvalInteger::class, 1]],
+    ['let oneAndTwo = fn() { let one = 1; let two = 2; one + two }; oneAndTwo()', [EvalInteger::class, 3]],
+    ['let oneAndTwo = fn() { let one = 1; let two = 2; one + two }; let threeAndFour = fn() { let three = 3; let four = 4; three + four }; oneAndTwo() + threeAndFour()', [EvalInteger::class, 10]],
+    ['let firstFoobar = fn() { let foobar = 50; foobar }; let secondFoobar = fn() { let foobar = 100; foobar }; firstFoobar() + secondFoobar()', [EvalInteger::class, 150]],
+    ['let globalSeed = 50; let minusOne = fn() { let num = 1; globalSeed - num }; let minusTwo = fn() { let num = 2; globalSeed - num }; minusOne() + minusTwo()', [EvalInteger::class, 97]],
+    ['let returnsOneReturner = fn() { let returnsOne = fn() { 1 }; returnsOne }; returnsOneReturner()()', [EvalInteger::class, 1]],
+    ['let identity = fn(a) { a }; identity(4)', [EvalInteger::class, 4]],
+    ['let sum = fn(a, b) { a + b }; sum(1, 2)', [EvalInteger::class, 3]],
+    ['let sum = fn(a, b) { let c = a + b; c }; sum(1, 2)', [EvalInteger::class, 3]],
+    ['let sum = fn(a, b) { let c = a + b; c }; sum(1, 2) + sum(3, 4)', [EvalInteger::class, 10]],
+    ['let sum = fn(a, b) { let c = a + b; c }; let outer = fn() { sum(1, 2) + sum(3, 4) }; outer()', [EvalInteger::class, 10]],
+    ['let globalNum = 10; let sum = fn(a, b) { let c = a + b; c + globalNum }; let outer = fn() { sum(1, 2) + sum(3, 4) + globalNum }; outer() + globalNum', [EvalInteger::class, 50]]
+]);
+
+it('errors', function ($input, $message) {
+    $program = createProgram($input);
+
+    $compiler = new Compiler();
+    expect($compiler->compile($program))->not->toThrow(Exception::class);
+
+    $vm = VM::new($compiler);
+    try {
+        $vm->run();
+        expect(false)->toBeTrue('expected to throw an exception');
+    } catch (Exception $exception) {
+        expect($exception->getMessage())->toBe($message);
+    }
+})->with([
+    ['fn() { 1 }(1)', 'wrong number of arguments: want=0, got=1'],
+    ['fn(a) { a }()', 'wrong number of arguments: want=1, got=0'],
+    ['fn(a, b) { a + b }(1)', 'wrong number of arguments: want=2, got=1'],
 ]);

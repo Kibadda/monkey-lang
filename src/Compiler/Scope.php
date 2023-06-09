@@ -5,5 +5,5 @@ namespace Monkey\Compiler;
 enum Scope
 {
     case GLOBAL;
-    case COMPILATION;
+    case LOCAL;
 }

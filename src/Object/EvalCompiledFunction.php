@@ -1,6 +1,6 @@
 <?php
 
-namespace Monkey\Evaluator\Object;
+namespace Monkey\Object;
 
 use Monkey\Compiler\Instructions;
 
@@ -8,6 +8,8 @@ class EvalCompiledFunction implements EvalObject
 {
     public function __construct(
         public Instructions $instructions,
+        public int $numLocals,
+        public int $numParameters,
     ) {
     }
 

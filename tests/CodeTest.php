@@ -13,4 +13,5 @@ it('makes', function (Code $code, array $operands, array $expected) {
 })->with([
     [Code::CONSTANT, [65534], [Code::CONSTANT->value, 255, 254]],
     [Code::ADD, [], [Code::ADD->value]],
+    [Code::GET_LOCAL, [255], [Code::GET_LOCAL->value, 255]],
 ]);

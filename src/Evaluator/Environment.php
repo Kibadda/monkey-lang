@@ -2,7 +2,7 @@
 
 namespace Monkey\Evaluator;
 
-use Monkey\Evaluator\Object\EvalObject;
+use Monkey\Object\EvalObject;
 
 class Environment
 {

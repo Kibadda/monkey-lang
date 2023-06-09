@@ -5,6 +5,7 @@ namespace Monkey\Compiler;
 use Exception;
 use Monkey\Ast\Expression\ArrayLiteral;
 use Monkey\Ast\Expression\Boolean;
+use Monkey\Ast\Expression\CallExpression;
 use Monkey\Ast\Expression\FunctionLiteral;
 use Monkey\Ast\Expression\HashLiteral;
 use Monkey\Ast\Expression\Identifier;
@@ -21,10 +22,10 @@ use Monkey\Ast\Statement\ExpressionStatement;
 use Monkey\Ast\Statement\LetStatement;
 use Monkey\Ast\Statement\ReturnStatement;
 use Monkey\Code\Code;
-use Monkey\Evaluator\Object\EvalCompiledFunction;
-use Monkey\Evaluator\Object\EvalInteger;
-use Monkey\Evaluator\Object\EvalObject;
-use Monkey\Evaluator\Object\EvalString;
+use Monkey\Object\EvalCompiledFunction;
+use Monkey\Object\EvalInteger;
+use Monkey\Object\EvalObject;
+use Monkey\Object\EvalString;
 
 class Compiler
 {
@@ -120,7 +121,7 @@ class Compiler
             $this->compile($node->value);
 
             $symbol = $this->symbolTable->define($node->name->value);
-            $this->emit(Code::SET_GLOBAL, $symbol->index);
+            $this->emit($symbol->scope == Scope::GLOBAL ? Code::SET_GLOBAL : Code::SET_LOCAL, $symbol->index);
         } else if ($node instanceof Identifier) {
             $symbol = $this->symbolTable->resolve($node->value);
 
@@ -128,12 +129,20 @@ class Compiler
                 throw new Exception("undefined variable {$node->value}");
             }
 
-            $this->emit(Code::GET_GLOBAL, $symbol->index);
+            $this->emit($symbol->scope == Scope::GLOBAL ? Code::GET_GLOBAL : Code::GET_LOCAL, $symbol->index);
         } else if ($node instanceof IndexExpression) {
             $this->compile($node->left);
             $this->compile($node->index);
 
             $this->emit(Code::INDEX);
+        } else if ($node instanceof CallExpression) {
+            $this->compile($node->function);
+
+            foreach ($node->arguments as $argument) {
+                $this->compile($argument);
+            }
+
+            $this->emit(Code::CALL, count($node->arguments));
         } else if ($node instanceof IntegerLiteral) {
             $integer = new EvalInteger($node->value);
             $this->emit(Code::CONSTANT, $this->addConstant($integer));
@@ -158,6 +167,10 @@ class Compiler
         } else if ($node instanceof FunctionLiteral) {
             $this->enterScope();
 
+            foreach ($node->parameters as $parameter) {
+                $this->symbolTable->define($parameter->value);
+            }
+
             $this->compile($node->body);
 
             if ($this->lastInstructionIs(Code::POP)) {
@@ -167,9 +180,10 @@ class Compiler
                 $this->emit(Code::RETURN);
             }
 
+            $numLocals = $this->symbolTable->numDefinitions;
             $instructions = $this->leaveScope();
 
-            $compiledFunction = new EvalCompiledFunction($instructions);
+            $compiledFunction = new EvalCompiledFunction($instructions, $numLocals, count($node->parameters));
             $this->emit(Code::CONSTANT, $this->addConstant($compiledFunction));
         } else if ($node instanceof ReturnStatement) {
             $this->compile($node->value);
@@ -242,8 +256,10 @@ class Compiler
 
     public function enterScope(): void
     {
-        $this->scopes[] = new CompilationScope();
         $this->scopeIndex++;
+        $this->scopes[$this->scopeIndex] = new CompilationScope();
+
+        $this->symbolTable = new SymbolTable($this->symbolTable);
     }
 
     public function leaveScope(): Instructions
@@ -252,6 +268,8 @@ class Compiler
 
         unset($this->scopes[$this->scopeIndex]);
         $this->scopeIndex--;
+
+        $this->symbolTable = $this->symbolTable->outer;
 
         return $instructions;
     }

@@ -30,6 +30,8 @@ enum Code: int
     case CALL = 22;
     case RETURN_VALUE = 23;
     case RETURN = 24;
+    case GET_LOCAL = 25;
+    case SET_LOCAL = 26;
 
     public function definition(): Definition
     {
@@ -55,9 +57,11 @@ enum Code: int
             self::BANG,
             self::NULL,
             self::INDEX,
-            self::CALL,
             self::RETURN_VALUE,
             self::RETURN => new Definition($this->name, []),
+            self::CALL,
+            self::GET_LOCAL,
+            self::SET_LOCAL => new Definition($this->name, [1]),
         };
     }
 
@@ -81,6 +85,9 @@ enum Code: int
                     $instruction[] = $operand >> 0x8;
                     $instruction[] = $operand & 0xFF;
                 }),
+                1 => call_user_func(function () use ($operand, $instruction) {
+                    $instruction[] = $operand;
+                }),
             };
         }
 
@@ -96,6 +103,9 @@ enum Code: int
             match ($width) {
                 2 => call_user_func(function () use (&$operands, $instructions, $offset, $i) {
                     $operands[$i] = ($instructions[$offset] << 0x8) | $instructions[$offset + 1];
+                }),
+                1 => call_user_func(function () use (&$operands, $instructions, $offset, $i) {
+                    $operands[$i] = $instructions[$offset];
                 }),
             };
 
