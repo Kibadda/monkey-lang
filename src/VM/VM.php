@@ -22,39 +22,37 @@ class VM
     private const GLOBALS_SIZE = 65536;
     private const FRAMES_SIZE = 1024;
 
-    public static function new(Compiler $compiler): self
+    /** @var EvalObject[] $constants */
+    public array $constants;
+
+    /** @var EvalObject[] $stack */
+    public array $stack = [];
+    public int $sp = 0;
+
+    /** @var EvalObject[] $globals */
+    public array $globals;
+
+    /** @var Frame[] $frames */
+    public array $frames;
+    public int $framesIndex;
+
+    public EvalBoolean $true;
+    public EvalBoolean $false;
+    public EvalNull $null;
+
+    public function __construct(Compiler $compiler, array $globals = [])
     {
         $mainFunction = new EvalCompiledFunction($compiler->currentInstructions(), 0, 0);
         $mainFrame = new Frame($mainFunction, 0);
 
-        return new self($compiler->constants, [], 0, [], [$mainFrame], 1);
-    }
+        $this->constants = $compiler->constants;
+        $this->globals = $globals;
+        $this->frames = [$mainFrame];
+        $this->framesIndex = 1;
 
-    public static function newWithGlobalsStore(Compiler $compiler, array $globals): self
-    {
-        $mainFunction = new EvalCompiledFunction($compiler->currentInstructions(), 0, 0);
-        $mainFrame = new Frame($mainFunction, 0);
-
-        return new self($compiler->constants, [], 0, $globals, [$mainFrame], 1);
-    }
-
-    /**
-     * @param EvalObject[] $constants
-     * @param EvalObject[] $stack
-     * @param EvalObject[] $globals
-     * @param Frame[] $frames
-     */
-    private function __construct(
-        public array $constants,
-        public array $stack = [],
-        public int $sp = 0,
-        public array $globals = [],
-        public array $frames = [],
-        public int $framesIndex = 0,
-        public EvalBoolean $true = new EvalBoolean(true),
-        public EvalBoolean $false = new EvalBoolean(false),
-        public EvalNull $null = new EvalNull(),
-    ) {
+        $this->true = new EvalBoolean(true);
+        $this->false = new EvalBoolean(false);
+        $this->null = new EvalNull();
     }
 
     public function stackTop(): EvalObject
@@ -165,6 +163,11 @@ class VM
                 }),
                 Code::GET_GLOBAL => call_user_func(function () use ($ip, $code, $instructions) {
                     $globalIndex = $code->readInt($instructions, $ip + 1);
+
+                    if ($globalIndex >= self::GLOBALS_SIZE) {
+                        throw new Exception('stack overflow');
+                    }
+
                     $this->currentFrame()->ip += 2;
 
                     $this->push($this->globals[$globalIndex]);
@@ -316,6 +319,10 @@ class VM
 
     public function pushFrame(Frame $frame): void
     {
+        if ($this->framesIndex >= self::FRAMES_SIZE) {
+            throw new Exception('stack overflow');
+        }
+
         $this->frames[$this->framesIndex] = $frame;
         $this->framesIndex++;
     }

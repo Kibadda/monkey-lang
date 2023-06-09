@@ -7,9 +7,9 @@ if ($argc == 0) {
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-use Monkey\Evaluator\Environment;
 use Monkey\Evaluator\Evaluator;
 use Monkey\Lexer\Lexer;
+use Monkey\Object\Environment;
 use Monkey\Parser\Parser;
 use Monkey\Repl\Repl;
 
@@ -22,9 +22,9 @@ function evalFile($filename)
 
     $file = file_get_contents($filename);
 
-    $environment = Environment::new();
-    $lexer = Lexer::new($file);
-    $parser = Parser::new($lexer);
+    $environment = new Environment();
+    $lexer = new Lexer($file);
+    $parser = new Parser($lexer);
 
     $program = $parser->parseProgam();
 
@@ -37,10 +37,14 @@ function evalFile($filename)
         exit(1);
     }
 
-    $environment->extend(Evaluator::defineMacros($program));
-    $expanded = Evaluator::expandMacros($program, $environment);
+    $env = new Environment();
+    $env->defineMacros($program);
 
-    $evaluated = Evaluator::new($environment)->eval($expanded);
+    $environment->extend($env);
+    $expanded = $environment->expandMacros($program);
+
+    $evaluator = new Evaluator($environment);
+    $evaluated = $evaluator->eval($expanded);
 
     if (!is_null($evaluated)) {
         fwrite(STDOUT, "{$evaluated->inspect()}\n");

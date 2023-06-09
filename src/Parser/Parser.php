@@ -28,20 +28,15 @@ use Monkey\Token\Type;
 
 class Parser
 {
-    public Lexer $lexer;
-    public ?Token $curToken = null;
-    public ?Token $peekToken = null;
-    /** @var string[] $errors */
-    public array $errors = [];
-
-    public static function new(Lexer $lexer): self
-    {
-        return new self($lexer);
-    }
-
-    private function __construct(Lexer $lexer)
-    {
-        $this->lexer = $lexer;
+    /**
+     * @param string[] $errors
+     */
+    public function __construct(
+        public Lexer $lexer,
+        public ?Token $curToken = null,
+        public ?Token $peekToken = null,
+        public array $errors = [],
+    ) {
         $this->nextToken();
         $this->nextToken();
     }
@@ -510,12 +505,12 @@ class Parser
 
     private function peekPrecedence(): Precedence
     {
-        return Precedence::fromType($this->peekToken->type);
+        return $this->peekToken->type->precedence();
     }
 
     private function curPrecedence(): Precedence
     {
-        return Precedence::fromType($this->curToken->type);
+        return $this->curToken->type->precedence();
     }
 
     private function peekError(Type $type)

@@ -3,31 +3,25 @@
 namespace Monkey\Compiler;
 
 use ArrayAccess;
+use Iterator;
 use Monkey\Code\Code;
 
-class Instructions implements ArrayAccess
+class Instructions implements ArrayAccess, Iterator
 {
-    /**
-     * @param self $instructionsArray
-     */
-    public static function merge(...$instructionsArray): self
-    {
-        $elements = [];
-        foreach ($instructionsArray as $instructions) {
-            foreach ($instructions->elements as $element) {
-                $elements[] = $element;
-            }
-        }
-
-        return new self($elements);
-    }
-
     /**
      * @param int[] $elements
      */
     public function __construct(
         public array $elements,
+        private int $position = 0,
     ) {
+        if ($this->count() > 0 && $elements[0] instanceof self) {
+            /** @var self[] $elements */
+            $this->elements = [];
+            foreach ($elements as $element) {
+                $this->merge($element);
+            }
+        }
     }
 
     public function offsetExists(mixed $offset): bool
@@ -54,9 +48,41 @@ class Instructions implements ArrayAccess
         return $this->offsetExists($offset) ? $this->elements[$offset] : null;
     }
 
+    public function rewind(): void
+    {
+        $this->position = 0;
+    }
+
+    public function current(): int
+    {
+        return $this->elements[$this->position];
+    }
+
+    public function key(): int
+    {
+        return $this->position;
+    }
+
+    public function next(): void
+    {
+        ++$this->position;
+    }
+
+    public function valid(): bool
+    {
+        return array_key_exists($this->position, $this->elements);
+    }
+
+    public function merge(self $instructions): void
+    {
+        foreach ($instructions as $element) {
+            $this->elements[] = $element;
+        }
+    }
+
     public function slice(int $offset, ?int $length = null): Instructions
     {
-        return new Instructions(array_slice($this->elements, $offset, $length));
+        return new self(array_slice($this->elements, $offset, $length));
     }
 
     public function count(): int
@@ -70,9 +96,10 @@ class Instructions implements ArrayAccess
 
         $i = 0;
         while ($i < $this->count()) {
-            $definition = Code::tryFrom($this[$i])->definition();
+            $code = Code::tryFrom($this[$i]);
+            $definition = $code->definition();
 
-            list($operands, $read) = Code::readOperands($definition, $this->slice($i + 1));
+            list($operands, $read) = $code->readOperands($this->slice($i + 1));
 
             $string .= sprintf("%04d %s\n", $i, match (true) {
                 count($definition->operandWidths) != count($operands) => 'ERROR: operand len ' . count($operands) . ' does not match defined ' . count($definition->operandWidths),

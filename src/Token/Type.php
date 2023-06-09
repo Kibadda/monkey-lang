@@ -2,6 +2,8 @@
 
 namespace Monkey\Token;
 
+use Monkey\Parser\Precedence;
+
 enum Type
 {
     case ILLEGAL;
@@ -72,6 +74,23 @@ enum Type
             self::LBRACE => '{',
             self::RBRACE => '}',
             default => '',
+        };
+    }
+
+    public function precedence(): Precedence
+    {
+        return match ($this) {
+            self::EQ => Precedence::EQUALS,
+            self::NOT_EQ => Precedence::EQUALS,
+            self::LT => Precedence::LESSGREATER,
+            self::GT => Precedence::LESSGREATER,
+            self::PLUS => Precedence::SUM,
+            self::MINUS => Precedence::SUM,
+            self::SLASH => Precedence::PRODUCT,
+            self::ASTERISK => Precedence::PRODUCT,
+            self::LPAREN => Precedence::CALL,
+            self::LBRACKET => Precedence::INDEX,
+            default => Precedence::LOWEST,
         };
     }
 }

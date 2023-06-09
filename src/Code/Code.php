@@ -94,12 +94,12 @@ enum Code: int
         return $instruction;
     }
 
-    public static function readOperands(Definition $definition, Instructions $instructions): array
+    public function readOperands(Instructions $instructions): array
     {
         $operands = [];
         $offset = 0;
 
-        foreach ($definition->operandWidths as $i => $width) {
+        foreach ($this->definition()->operandWidths as $i => $width) {
             match ($width) {
                 2 => call_user_func(function () use (&$operands, $instructions, $offset, $i) {
                     $operands[$i] = ($instructions[$offset] << 0x8) | $instructions[$offset + 1];

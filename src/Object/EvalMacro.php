@@ -4,7 +4,6 @@ namespace Monkey\Object;
 
 use Monkey\Ast\Expression\Identifier;
 use Monkey\Ast\Statement\BlockStatement;
-use Monkey\Evaluator\Environment;
 
 class EvalMacro implements EvalObject
 {

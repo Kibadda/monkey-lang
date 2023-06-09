@@ -29,11 +29,6 @@ use Monkey\Object\EvalString;
 
 class Compiler
 {
-    public static function newWithState(SymbolTable $symbolTable, array $constants): self
-    {
-        return new self(symbolTable: $symbolTable, constants: $constants);
-    }
-
     /**
      * @param EvalObject[] $constants
      * @param CompilationScope[] $scopes
@@ -210,7 +205,7 @@ class Compiler
     public function addInstruction(Instructions $instructions): int
     {
         $posNewInstruction = $this->currentInstructions()->count();
-        $this->scopes[$this->scopeIndex]->instructions = Instructions::merge($this->currentInstructions(), $instructions);
+        $this->scopes[$this->scopeIndex]->instructions->merge($instructions);
         return $posNewInstruction;
     }
 

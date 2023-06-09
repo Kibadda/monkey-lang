@@ -13,19 +13,19 @@ it('compiles', function (string $input, array $expectedConstants, array $expecte
     $compiler = new Compiler();
 
     expect($compiler->compile($program))->not->toThrow(Exception::class);
-    $concatted = Instructions::merge(...$expectedInstructions);
-    expect($compiler->currentInstructions()->string())->toBe($concatted->string());
-    expect($compiler->currentInstructions()->count())->toBe($concatted->count());
-    foreach ($compiler->currentInstructions()->elements as $i => $instruction) {
-        expect($instruction)->toBe($concatted[$i]);
+    $instructions = new Instructions($expectedInstructions);
+    expect($compiler->currentInstructions()->string())->toBe($instructions->string());
+    expect($compiler->currentInstructions()->count())->toBe($instructions->count());
+    foreach ($compiler->currentInstructions() as $i => $instruction) {
+        expect($instruction)->toBe($instructions[$i]);
     }
     foreach ($compiler->constants as $i => $constant) {
         expect($constant)->toBeInstanceOf($expectedConstants[$i][0]);
         if ($constant instanceof EvalCompiledFunction) {
-            $con = Instructions::merge(...$expectedConstants[$i][1]);
+            $con = new Instructions($expectedConstants[$i][1]);
             expect($constant->instructions->string())->toBe($con->string());
             expect($constant->instructions->count())->toBe($con->count());
-            foreach ($constant->instructions->elements as $j => $instruction) {
+            foreach ($constant->instructions as $j => $instruction) {
                 expect($instruction)->toBe($con[$j]);
             }
         } else {
@@ -251,12 +251,12 @@ it('compiles', function (string $input, array $expectedConstants, array $expecte
 ]);
 
 it('stringyfies', function () {
-    $instructions = [
+    $instructions = new Instructions([
         Code::ADD->make(),
         Code::GET_LOCAL->make(1),
         Code::CONSTANT->make(2),
         Code::CONSTANT->make(65535),
-    ];
+    ]);
 
     $expected = '0000 ADD
 0001 GET_LOCAL 1
@@ -264,16 +264,13 @@ it('stringyfies', function () {
 0006 CONSTANT 65535
 ';
 
-    $concatted = Instructions::merge(...$instructions);
-    expect($concatted->string())->toBe($expected, json_encode($concatted));
+    expect($instructions->string())->toBe($expected, json_encode($instructions));
 });
 
 it('reads', function (Code $code, $operands, $bytesRead) {
     $instruction = $code->make(...$operands);
 
-    $definition = $code->definition();
-
-    list($operandsRead, $n) = Code::readOperands($definition, $instruction->slice(1));
+    list($operandsRead, $n) = $code->readOperands($instruction->slice(1));
     expect($n)->toBe($bytesRead);
     foreach ($operands as $i => $operand) {
         expect($operandsRead[$i])->toBe($operand);

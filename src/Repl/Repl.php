@@ -5,8 +5,6 @@ namespace Monkey\Repl;
 use Exception;
 use Monkey\Compiler\Compiler;
 use Monkey\Compiler\SymbolTable;
-use Monkey\Evaluator\Environment;
-use Monkey\Evaluator\Evaluator;
 use Monkey\Lexer\Lexer;
 use Monkey\Parser\Parser;
 use Monkey\VM\VM;
@@ -42,8 +40,8 @@ class Repl
                 break;
             }
 
-            $lexer = Lexer::new($line);
-            $parser = Parser::new($lexer);
+            $lexer = new Lexer($line);
+            $parser = new Parser($lexer);
 
             $program = $parser->parseProgam();
 
@@ -66,7 +64,7 @@ class Repl
             //     fwrite(STDOUT, "{$evaluated->inspect()}\n");
             // }
 
-            $compiler = Compiler::newWithState($symbolTable, $constants);
+            $compiler = new Compiler($constants, $symbolTable);
             try {
                 $compiler->compile($program);
             } catch (Exception $e) {
@@ -76,7 +74,7 @@ class Repl
 
             $constants = $compiler->constants;
 
-            $vm = VM::newWithGlobalsStore($compiler, $globals);
+            $vm = new VM($compiler, $globals);
             try {
                 $vm->run();
             } catch (Exception $e) {

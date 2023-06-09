@@ -131,7 +131,7 @@ it('errors', function ($input, $message) {
     $compiler = new Compiler();
     expect($compiler->compile($program))->not->toThrow(Exception::class);
 
-    $vm = VM::new($compiler);
+    $vm = new VM($compiler);
     try {
         $vm->run();
         expect(false)->toBeTrue('expected to throw an exception');

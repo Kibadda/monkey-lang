@@ -7,21 +7,12 @@ use Monkey\Token\Type;
 
 class Lexer
 {
-
-    public string $input;
-    public int $position;
-    public int $readPosition;
-    public string $ch;
-
-    public static function new(string $input): self
-    {
-        return new self($input);
-    }
-
-    public function __construct(string $input)
-    {
-        $this->input = $input;
-        $this->readPosition = 0;
+    public function __construct(
+        public string $input,
+        public int $position = -1,
+        public int $readPosition = 0,
+        public string $ch = '',
+    ) {
         $this->readChar();
     }
 

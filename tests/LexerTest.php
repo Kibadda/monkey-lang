@@ -142,7 +142,7 @@ it('tokenizes input', function () {
         new Token(Type::EOF, ''),
     ];
 
-    $lexer = Lexer::new($input);
+    $lexer = new Lexer($input);
 
     foreach ($tests as $test) {
         $token = $lexer->nextToken();

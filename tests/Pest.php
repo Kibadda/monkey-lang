@@ -214,8 +214,8 @@ expect()->extend('toBeIndexExpression', function ($left, $index) {
 
 function createProgram(string $input): Program
 {
-    $lexer = Lexer::new($input);
-    $parser = Parser::new($lexer);
+    $lexer = new Lexer($input);
+    $parser = new Parser($lexer);
     $program = $parser->parseProgam();
 
     expect($parser->errors)->toHaveCount(0, json_encode($parser->errors));
@@ -230,7 +230,7 @@ function runVM(string $input): VM
     $compiler = new Compiler();
     expect($compiler->compile($program))->not->toThrow(Exception::class);
 
-    $vm = VM::new($compiler);
+    $vm = new VM($compiler);
     expect($vm->run())->not->toThrow(Exception::class);
 
     return $vm;

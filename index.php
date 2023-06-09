@@ -1,23 +1,11 @@
 <?php
 
-use Monkey\Compiler\Compiler;
-use Monkey\Lexer\Lexer;
-use Monkey\Parser\Parser;
-use Monkey\VM\VM;
+use Monkey\Code\Code;
+use Monkey\Compiler\Instructions;
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-$lexer = Lexer::new('let one = fn() { 1 }; let two = fn() { 2 }; ');
-$parser = Parser::new($lexer);
-$program = $parser->parseProgam();
+$instructions = [Code::CONSTANT->make(0), Code::CONSTANT->make(1), Code::ADD->make(), Code::POP->make()];
 
-$compiler = new Compiler();
-
-$compiler->compile($program);
-
-print_r($compiler->currentInstructions()->string());
-
-$vm = VM::new($compiler);
-$vm->run();
-
-print_r($vm->lastPoppedStackElem());
+print_r(Instructions::from($instructions));
+print_r(new Instructions($instructions));

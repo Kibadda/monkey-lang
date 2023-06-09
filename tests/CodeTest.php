@@ -5,7 +5,7 @@ use Monkey\Code\Code;
 it('makes', function (Code $code, array $operands, array $expected) {
     $instruction = $code->make(...$operands);
 
-    expect($instruction->elements)->toHaveCount(count($expected));
+    expect($instruction)->toHaveCount(count($expected));
 
     foreach ($expected as $i => $b) {
         expect($instruction[$i])->toBe($b);

@@ -1,7 +1,7 @@
 <?php
 
-use Monkey\Evaluator\Environment;
 use Monkey\Evaluator\Evaluator;
+use Monkey\Object\Environment;
 use Monkey\Object\EvalArray;
 use Monkey\Object\EvalBoolean;
 use Monkey\Object\EvalError;
@@ -15,9 +15,10 @@ use Monkey\Object\EvalString;
 
 it('evaluates', function ($input, $eval, $value) {
     $program = createProgram($input);
-    $environment = Environment::new();
+    $environment = new Environment();
 
-    $evaluated = Evaluator::new($environment)->eval($program);
+    $evaluator = new Evaluator($environment);
+    $evaluated = $evaluator->eval($program);
     expect($evaluated)->toBeInstanceOf($eval);
     match ($eval) {
         EvalArray::class => call_user_func(function () use ($evaluated, $value) {
@@ -92,9 +93,10 @@ it('evaluates', function ($input, $eval, $value) {
 
 it('handles errors', function ($input, $error) {
     $program = createProgram($input);
-    $environment = Environment::new();
+    $environment = new Environment();
 
-    $evaluated = Evaluator::new($environment)->eval($program);
+    $evaluator = new Evaluator($environment);
+    $evaluated = $evaluator->eval($program);
     expect($evaluated)->toBeInstanceOf(EvalError::class);
     expect($evaluated->message)->toBe($error);
 })->with([
@@ -112,9 +114,10 @@ it('handles errors', function ($input, $error) {
 
 it('evaluates functions', function () {
     $program = createProgram('fn(x) { x + 2; };');
-    $environment = Environment::new();
+    $environment = new Environment();
 
-    $evaluated = Evaluator::new($environment)->eval($program);
+    $evaluator = new Evaluator($environment);
+    $evaluated = $evaluator->eval($program);
     expect($evaluated)->toBeInstanceOf(EvalFunction::class);
     expect($evaluated->parameters)->toHaveCount(1);
     expect($evaluated->parameters[0])->toBeIdentifier('x');
@@ -130,18 +133,20 @@ it('evaluates closures', function () {
         let addTwo = newAdder(2);
         addTwo(2);
     ');
-    $environment = Environment::new();
+    $environment = new Environment();
 
-    $evaluated = Evaluator::new($environment)->eval($program);
+    $evaluator = new Evaluator($environment);
+    $evaluated = $evaluator->eval($program);
     expect($evaluated)->toBeInstanceOf(EvalInteger::class);
     expect($evaluated->value)->toBe(4);
 });
 
 it('evaluates builtin functions', function ($input, $eval, $value) {
     $program = createProgram($input);
-    $environment = Environment::new();
+    $environment = new Environment();
 
-    $evaluated = Evaluator::new($environment)->eval($program);
+    $evaluator = new Evaluator($environment);
+    $evaluated = $evaluator->eval($program);
     expect($evaluated)->toBeInstanceOf($eval);
     match ($eval) {
         EvalInteger::class => expect($evaluated->value)->toBe($value),
@@ -157,9 +162,10 @@ it('evaluates builtin functions', function ($input, $eval, $value) {
 
 it('evaluates array index', function ($input, $value) {
     $program = createProgram($input);
-    $environment = Environment::new();
+    $environment = new Environment();
 
-    $evaluated = Evaluator::new($environment)->eval($program);
+    $evaluator = new Evaluator($environment);
+    $evaluated = $evaluator->eval($program);
     match ($value) {
         null => expect($evaluated)->toBeInstanceOf(EvalNull::class),
         default => expect($evaluated->value)->toBe($value),
@@ -179,9 +185,10 @@ it('evaluates array index', function ($input, $value) {
 
 it('evaluates hash index', function ($input, $value) {
     $program = createProgram($input);
-    $environment = Environment::new();
+    $environment = new Environment();
 
-    $evaluated = Evaluator::new($environment)->eval($program);
+    $evaluator = new Evaluator($environment);
+    $evaluated = $evaluator->eval($program);
     match ($value) {
         null => expect($evaluated)->toBeInstanceOf(EvalNull::class),
         default => expect($evaluated->value)->toBe($value),
@@ -198,9 +205,10 @@ it('evaluates hash index', function ($input, $value) {
 
 it('evaluates quote', function ($input, $node) {
     $program = createProgram($input);
-    $environment = Environment::new();
+    $environment = new Environment();
 
-    $evaluated = Evaluator::new($environment)->eval($program);
+    $evaluator = new Evaluator($environment);
+    $evaluated = $evaluator->eval($program);
     expect($evaluated)->toBeInstanceOf(EvalQuote::class);
     expect($evaluated->node)->not->toBeNull();
     expect($evaluated->node->string())->toBe($node);
@@ -227,7 +235,8 @@ it('defines macros', function () {
         let function  = fn(x, y) { x + y; };
         let mymacro = macro(x, y) { x + y; };
     ');
-    $environment = Evaluator::defineMacros($program);
+    $environment = new Environment();
+    $environment->defineMacros($program);
 
     expect($program->statements)->toHaveCount(2);
     expect($environment->get('number'))->toBeNull();
@@ -246,9 +255,10 @@ it('defines macros', function () {
 it('expands macros', function ($input, $expected) {
     $expected = createProgram($expected);
     $program = createProgram($input);
-    $environment = Evaluator::defineMacros($program);
+    $environment = new Environment();
+    $environment->defineMacros($program);
 
-    $expanded = Evaluator::expandMacros($program, $environment);
+    $expanded = $environment->expandMacros($program);
 
     expect($expanded->string())->toBe($expected->string());
 })->with([

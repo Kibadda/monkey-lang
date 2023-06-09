@@ -2,7 +2,6 @@
 
 namespace Monkey\Evaluator;
 
-use Error;
 use Monkey\Ast\Expression\ArrayLiteral;
 use Monkey\Ast\Expression\Boolean;
 use Monkey\Ast\Expression\CallExpression;
@@ -14,7 +13,6 @@ use Monkey\Ast\Expression\IfExpression;
 use Monkey\Ast\Expression\IndexExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
-use Monkey\Ast\Expression\MacroLiteral;
 use Monkey\Ast\Expression\PrefixExpression;
 use Monkey\Ast\Expression\StringLiteral;
 use Monkey\Ast\Node;
@@ -23,6 +21,7 @@ use Monkey\Ast\Statement\BlockStatement;
 use Monkey\Ast\Statement\ExpressionStatement;
 use Monkey\Ast\Statement\LetStatement;
 use Monkey\Ast\Statement\ReturnStatement;
+use Monkey\Object\Environment;
 use Monkey\Object\EvalArray;
 use Monkey\Object\EvalBoolean;
 use Monkey\Object\EvalBuiltin;
@@ -30,7 +29,6 @@ use Monkey\Object\EvalError;
 use Monkey\Object\EvalFunction;
 use Monkey\Object\EvalHash;
 use Monkey\Object\EvalInteger;
-use Monkey\Object\EvalMacro;
 use Monkey\Object\EvalNull;
 use Monkey\Object\EvalObject;
 use Monkey\Object\EvalQuote;
@@ -43,15 +41,18 @@ use Monkey\Token\Type;
 
 class Evaluator
 {
-    public static function new(Environment $environment): self
-    {
-        $singletons = [
+    public function __construct(
+        private Environment $environment,
+        private array $singletons = [],
+        private array $builtins = [],
+    ) {
+        $this->singletons = [
             true => new EvalBoolean(true),
             false => new EvalBoolean(false),
             null => new EvalNull(),
         ];
 
-        $builtins = [
+        $this->builtins = [
             'len' => new EvalBuiltin(function (...$args) {
                 if (count($args) != 1) {
                     return new EvalError('wrong number of arguments: got ' . count($args) . ', wanted 1');
@@ -127,86 +128,6 @@ class Evaluator
                 return $singletons[null];
             }),
         ];
-
-        return new self($environment, $singletons, $builtins);
-    }
-
-    public static function defineMacros(Program $program): Environment
-    {
-        $env = Environment::new();
-        $definitions = [];
-
-        foreach ($program->statements as $i => $statement) {
-            if (!$statement instanceof LetStatement) {
-                continue;
-            }
-
-            if (!$statement->value instanceof MacroLiteral) {
-                continue;
-            }
-
-            $env->set($statement->name->value, new EvalMacro(
-                $statement->value->parameters,
-                $statement->value->body,
-                $env,
-            ));
-
-            $definitions[] = $i;
-        }
-
-        for ($i = count($definitions) - 1; $i >= 0; $i--) {
-            array_splice($program->statements, $i, 1);
-        }
-
-        return $env;
-    }
-
-    public static function expandMacros(Program $program, Environment $environment): Node
-    {
-        return $program->modify(function (Node $node) use ($environment): Node {
-            if (!$node instanceof CallExpression) {
-                return $node;
-            }
-
-            if (!$node->function instanceof Identifier) {
-                return $node;
-            }
-
-            $macro = $environment->get($node->function->value);
-            if (empty($macro)) {
-                return $node;
-            }
-
-            if (!$macro instanceof EvalMacro) {
-                return $node;
-            }
-
-            $arguments = [];
-            foreach ($node->arguments as $argument) {
-                $arguments[] = new EvalQuote($argument);
-            }
-
-            $extended = Environment::closed($macro->environment);
-
-            foreach ($macro->parameters as $i => $parameter) {
-                $extended->set($parameter->value, $arguments[$i]);
-            }
-
-            $evaluated = self::new($extended)->eval($macro->body);
-
-            if (!$evaluated instanceof EvalQuote) {
-                throw new Error('we only support returning AST-nodes from macros');
-            }
-
-            return $evaluated->node;
-        });
-    }
-
-    private function __construct(
-        private Environment $environment,
-        private array $singletons,
-        private array $builtins,
-    ) {
     }
 
     public function eval(Node $node): ?EvalObject
@@ -507,7 +428,7 @@ class Evaluator
      */
     private function extendFunctionEnv(EvalFunction $function, array $arguments): Environment
     {
-        $environment = Environment::closed($function->environment);
+        $environment = new Environment($function->environment);
 
         foreach ($function->parameters as $i => $parameter) {
             $environment->set($parameter->value, $arguments[$i]);
