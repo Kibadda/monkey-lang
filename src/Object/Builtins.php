@@ -20,7 +20,7 @@ class Builtins
             return match ($args[0]::class) {
                 EvalString::class => new EvalInteger(strlen($args[0]->value)),
                 EvalArray::class => new EvalInteger(count($args[0]->elements)),
-                default => new EvalError("argument to `len` not supported, got {$args[0]->type()->name}"),
+                default => new EvalError("argument to `len` not supported: got {$args[0]->type()->name}"),
             };
         });
 
@@ -54,7 +54,7 @@ class Builtins
             }
 
             if ($args[0]->type() != EvalType::ARRAY) {
-                return new EvalError("argument to `first` must be ARRAY: got {$args[0]->type()->name}");
+                return new EvalError("argument to `last` must be ARRAY: got {$args[0]->type()->name}");
             }
 
             if (count($args[0]->elements) > 0) {
@@ -70,7 +70,7 @@ class Builtins
             }
 
             if ($args[0]->type() != EvalType::ARRAY) {
-                return new EvalError("argument to `first` must be ARRAY: got {$args[0]->type()->name}");
+                return new EvalError("argument to `rest` must be ARRAY: got {$args[0]->type()->name}");
             }
 
             if (count($args[0]->elements) > 0) {
@@ -86,7 +86,7 @@ class Builtins
             }
 
             if ($args[0]->type() != EvalType::ARRAY) {
-                return new EvalError("argument to `first` must be ARRAY: got {$args[0]->type()->name}");
+                return new EvalError("argument to `push` must be ARRAY: got {$args[0]->type()->name}");
             }
 
             return new EvalArray([...$args[0]->elements, $args[1]]);

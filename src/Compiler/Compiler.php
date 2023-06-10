@@ -23,6 +23,7 @@ use Monkey\Ast\Statement\ExpressionStatement;
 use Monkey\Ast\Statement\LetStatement;
 use Monkey\Ast\Statement\ReturnStatement;
 use Monkey\Code\Code;
+use Monkey\Object\Builtins;
 use Monkey\Object\EvalCompiledFunction;
 use Monkey\Object\EvalInteger;
 use Monkey\Object\EvalObject;
@@ -40,6 +41,10 @@ class Compiler
         public array $scopes = [new CompilationScope()],
         public int $scopeIndex = 0,
     ) {
+        $builtins = new Builtins();
+        foreach (array_keys($builtins->builtins) as $i => $name) {
+            $this->symbolTable->defineBuiltin($i, $name);
+        }
     }
 
     public function compile(Node $node): void
@@ -125,7 +130,7 @@ class Compiler
                 throw new Exception("undefined variable {$node->value}");
             }
 
-            $this->emit($symbol->scope == Scope::GLOBAL ? Code::GET_GLOBAL : Code::GET_LOCAL, $symbol->index);
+            $this->loadSymbol($symbol);
         } else if ($node instanceof IndexExpression) {
             $this->compile($node->left);
             $this->compile($node->index);
@@ -295,5 +300,14 @@ class Compiler
         $lastPos = $this->scopes[$this->scopeIndex]->lastInstruction->position;
         $this->replaceInstruction($lastPos, Code::RETURN_VALUE->make());
         $this->scopes[$this->scopeIndex]->lastInstruction->code = Code::RETURN_VALUE;
+    }
+
+    public function loadSymbol(Symbol $symbol): void
+    {
+        $this->emit(match ($symbol->scope) {
+            Scope::GLOBAL => Code::GET_GLOBAL,
+            Scope::LOCAL => Code::GET_LOCAL,
+            Scope::BUILTIN => Code::GET_BUILTIN,
+        }, $symbol->index);
     }
 }

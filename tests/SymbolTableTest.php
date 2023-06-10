@@ -124,3 +124,28 @@ it('resolves nested locals', function () {
         }
     }
 });
+
+it('resolves builtins', function () {
+    $global = new SymbolTable();
+    $firstLocal = new SymbolTable($global);
+    $secondLocal = new SymbolTable($firstLocal);
+
+    $expected = [
+        new Symbol('a', Scope::BUILTIN, 0),
+        new Symbol('b', Scope::BUILTIN, 1),
+        new Symbol('c', Scope::BUILTIN, 2),
+        new Symbol('d', Scope::BUILTIN, 3),
+    ];
+
+    foreach ($expected as $i => $symbol) {
+        $global->defineBuiltin($i, $symbol->name);
+    }
+
+    foreach ([$global, $firstLocal, $secondLocal] as $table) {
+        foreach ($expected as $symbol) {
+            $result = $table->resolve($symbol->name);
+            expect($result)->not->toBeNull();
+            expect(print_r($result, true))->toBe(print_r($symbol, true));
+        }
+    }
+});

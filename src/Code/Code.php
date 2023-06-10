@@ -32,6 +32,7 @@ enum Code: int
     case RETURN = 24;
     case GET_LOCAL = 25;
     case SET_LOCAL = 26;
+    case GET_BUILTIN = 27;
 
     public function definition(): Definition
     {
@@ -61,7 +62,8 @@ enum Code: int
             self::RETURN => new Definition($this->name, []),
             self::CALL,
             self::GET_LOCAL,
-            self::SET_LOCAL => new Definition($this->name, [1]),
+            self::SET_LOCAL,
+            self::GET_BUILTIN => new Definition($this->name, [1]),
         };
     }
 

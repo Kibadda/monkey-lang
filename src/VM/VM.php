@@ -5,8 +5,10 @@ namespace Monkey\VM;
 use Exception;
 use Monkey\Code\Code;
 use Monkey\Compiler\Compiler;
+use Monkey\Object\Builtins;
 use Monkey\Object\EvalArray;
 use Monkey\Object\EvalBoolean;
+use Monkey\Object\EvalBuiltin;
 use Monkey\Object\EvalCompiledFunction;
 use Monkey\Object\EvalHash;
 use Monkey\Object\EvalInteger;
@@ -40,6 +42,8 @@ class VM
     public EvalBoolean $false;
     public EvalNull $null;
 
+    public Builtins $builtins;
+
     public function __construct(Compiler $compiler, array $globals = [])
     {
         $mainFunction = new EvalCompiledFunction($compiler->currentInstructions(), 0, 0);
@@ -53,6 +57,8 @@ class VM
         $this->true = new EvalBoolean(true);
         $this->false = new EvalBoolean(false);
         $this->null = new EvalNull();
+
+        $this->builtins = new Builtins();
     }
 
     public function stackTop(): EvalObject
@@ -242,17 +248,24 @@ class VM
 
                     $function = $this->stack[$this->sp - 1 - $numArguments];
 
-                    if (!$function instanceof EvalCompiledFunction) {
+                    if ($function instanceof EvalCompiledFunction) {
+                        if ($numArguments != $function->numParameters) {
+                            throw new Exception("wrong number of arguments: want={$function->numParameters}, got={$numArguments}");
+                        }
+
+                        $frame = new Frame($function, $this->sp - $numArguments);
+                        $this->pushFrame($frame);
+                        $this->sp = $frame->basePointer + $function->numLocals;
+                    } else if ($function instanceof EvalBuiltin) {
+                        $arguments = array_slice($this->stack, $this->sp - $numArguments, $numArguments);
+
+                        $result = ($function->builtinFunction)(...$arguments);
+                        $this->sp = $this->sp - $numArguments - 1;
+
+                        $this->push($result ?: $this->null);
+                    } else {
                         throw new Exception('calling non-function');
                     }
-
-                    if ($numArguments != $function->numParameters) {
-                        throw new Exception("wrong number of arguments: want={$function->numParameters}, got={$numArguments}");
-                    }
-
-                    $frame = new Frame($function, $this->sp - $numArguments);
-                    $this->pushFrame($frame);
-                    $this->sp = $frame->basePointer + $function->numLocals;
                 }),
                 Code::RETURN_VALUE => call_user_func(function () {
                     $returnValue = $this->pop();
@@ -283,6 +296,14 @@ class VM
                     $frame = $this->currentFrame();
 
                     $this->push($this->stack[$frame->basePointer + $localIndex]);
+                }),
+                Code::GET_BUILTIN => call_user_func(function () use ($ip, $instructions) {
+                    $builtinIndex = $instructions[$ip + 1];
+                    $this->currentFrame()->ip += 1;
+
+                    $definition = array_values($this->builtins->builtins)[$builtinIndex];
+
+                    $this->push($definition);
                 }),
                 default => null,
                 // default => throw new Exception("code not found for int: {$instructions[$ip]}"),

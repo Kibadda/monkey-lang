@@ -3,6 +3,7 @@
 use Monkey\Compiler\Compiler;
 use Monkey\Object\EvalArray;
 use Monkey\Object\EvalBoolean;
+use Monkey\Object\EvalError;
 use Monkey\Object\EvalHash;
 use Monkey\Object\EvalInteger;
 use Monkey\Object\EvalNull;
@@ -26,6 +27,8 @@ it('runs correctly', function (string $input, $expected) {
             expect(array_key_exists($key, $expected[1]))->toBeTrue();
             expect($pair->value)->toBe($expected[1][$key]);
         }
+    } else if ($expected[0] == EvalError::class) {
+        expect($stackElem->message)->toBe($expected[1]);
     } else if ($expected[0] != EvalNull::class) {
         expect($stackElem->value)->toBe($expected[1]);
     }
@@ -131,6 +134,24 @@ it('runs correctly', function (string $input, $expected) {
     ['match (1) { 2 -> 1 }', [EvalNull::class]],
     ['match (5 - 4) { 3 - 2 -> 1 + 1 }', [EvalInteger::class, 2]],
     ['match (fn() { true }()) { 1 != 2 -> 1 + 1 }', [EvalInteger::class, 2]],
+    ['len("")', [EvalInteger::class, 0]],
+    ['len("four")', [EvalInteger::class, 4]],
+    ['len("hello world")', [EvalInteger::class, 11]],
+    ['len(1)', [EvalError::class, 'argument to `len` not supported: got INTEGER']],
+    ['len("one", "two")', [EvalError::class, 'wrong number of arguments: got 2, wanted 1']],
+    ['len([1, 2, 3])', [EvalInteger::class, 3]],
+    ['len([])', [EvalInteger::class, 0]],
+    ['puts("hello", "world!")', [EvalNull::class]],
+    ['first([1, 2, 3])', [EvalInteger::class, 1]],
+    ['first([])', [EvalNull::class]],
+    ['first(1)', [EvalError::class, 'argument to `first` must be ARRAY: got INTEGER']],
+    ['last([1, 2, 3])', [EvalInteger::class, 3]],
+    ['last([])', [EvalNull::class]],
+    ['last(1)', [EvalError::class, 'argument to `last` must be ARRAY: got INTEGER']],
+    ['rest([1, 2, 3])', [EvalArray::class, [2, 3]]],
+    ['rest([])', [EvalNull::class]],
+    ['push([], 1)', [EvalArray::class, [1]]],
+    ['push(1, 1)', [EvalError::class, 'argument to `push` must be ARRAY: got INTEGER']],
 ]);
 
 it('errors', function ($input, $message) {

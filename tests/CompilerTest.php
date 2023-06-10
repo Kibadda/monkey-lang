@@ -252,7 +252,17 @@ it('compiles', function (string $input, array $expectedConstants, array $expecte
         'match (1) { 1 -> true, 2 -> false, 3 -> "one" }',
         [[EvalInteger::class, 1], [EvalInteger::class, 1], [EvalInteger::class, 1], [EvalInteger::class, 2], [EvalInteger::class, 1], [EvalInteger::class, 3], [EvalString::class, 'one']],
         [Code::CONSTANT->make(0), Code::CONSTANT->make(1), Code::EQUAL->make(), Code::JUMP_NOT_TRUTHY->make(14), Code::TRUE->make(), Code::JUMP->make(45), Code::CONSTANT->make(2), Code::CONSTANT->make(3), Code::EQUAL->make(), Code::JUMP_NOT_TRUTHY->make(28), Code::FALSE->make(), Code::JUMP->make(45), Code::CONSTANT->make(4), Code::CONSTANT->make(5), Code::EQUAL->make(), Code::JUMP_NOT_TRUTHY->make(44), Code::CONSTANT->make(6), Code::JUMP->make(45), Code::NULL->make(), Code::POP->make()],
-    ]
+    ],
+    [
+        'len([]); push([], 1)',
+        [[EvalInteger::class, 1]],
+        [Code::GET_BUILTIN->make(0), Code::ARRAY->make(0), Code::CALL->make(1), Code::POP->make(), Code::GET_BUILTIN->make(5), Code::ARRAY->make(0), Code::CONSTANT->make(0), Code::CALL->make(2), Code::POP->make()],
+    ],
+    [
+        'fn() { len([]) }',
+        [[EvalCompiledFunction::class, [Code::GET_BUILTIN->make(0), Code::ARRAY->make(0), Code::CALL->make(1), Code::RETURN_VALUE->make()]]],
+        [Code::CONSTANT->make(0), Code::POP->make()],
+    ],
 ]);
 
 it('stringyfies', function () {

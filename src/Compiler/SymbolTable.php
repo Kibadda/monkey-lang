@@ -22,6 +22,13 @@ class SymbolTable
         return $symbol;
     }
 
+    public function defineBuiltin(int $index, string $name): Symbol
+    {
+        $symbol = new Symbol($name, Scope::BUILTIN, $index);
+        $this->store[$name] = $symbol;
+        return $symbol;
+    }
+
     public function resolve(string $name): ?Symbol
     {
         if (empty($this->store[$name])) {

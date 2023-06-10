@@ -6,6 +6,7 @@ use Exception;
 use Monkey\Compiler\Compiler;
 use Monkey\Compiler\SymbolTable;
 use Monkey\Lexer\Lexer;
+use Monkey\Object\Builtins;
 use Monkey\Parser\Parser;
 use Monkey\VM\VM;
 
@@ -31,6 +32,11 @@ class Repl
         $constants = [];
         $globals = [];
         $symbolTable = new SymbolTable();
+
+        $builtins = new Builtins();
+        foreach (array_keys($builtins->builtins) as $i => $name) {
+            $symbolTable->defineBuiltin($i, $name);
+        }
 
         while (true) {
             fwrite(STDOUT, self::PROMPT);
