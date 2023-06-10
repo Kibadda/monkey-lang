@@ -76,10 +76,7 @@ enum Code: int
 
     public function make(...$operands): Instructions
     {
-        print_r($this);
         $definition = $this->definition();
-        print_r($definition);
-        print_r($operands);
 
         $instructionLength = 1;
         foreach ($definition->operandWidths as $width) {

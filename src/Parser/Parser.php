@@ -372,8 +372,6 @@ class Parser
         $this->nextToken();
         $subject = $this->parseExpression(Precedence::LOWEST);
 
-        print_r($subject);
-
         if ($subject == null) {
             return $subject;
         }
