@@ -165,7 +165,7 @@ expect()->extend('toBeIfExpression', function ($condition, array $consequences, 
     }
 });
 
-expect()->extend('toBeFunctionLiteral', function (array $parameters, array $body) {
+expect()->extend('toBeFunctionLiteral', function (array $parameters, array $body, $name = null) {
     expect($this->value)->toBeInstanceOf(FunctionLiteral::class);
     expect($this->value->parameters)->toHaveCount(count($parameters));
     foreach ($this->value->parameters as $i => $parameter) {
@@ -174,6 +174,10 @@ expect()->extend('toBeFunctionLiteral', function (array $parameters, array $body
     expect($this->value->body->statements)->toHaveCount(count($body));
     foreach ($this->value->body->statements as $i => $statement) {
         expect($statement)->toBeExpressionStatement(...$body[$i]);
+    }
+
+    if ($name != null) {
+        expect($this->value->name)->toBe($name);
     }
 });
 

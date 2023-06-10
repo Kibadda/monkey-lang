@@ -149,3 +149,115 @@ it('resolves builtins', function () {
         }
     }
 });
+
+it('resolves free', function () {
+    $global = new SymbolTable();
+    $global->define('a');
+    $global->define('b');
+
+    $firstLocal = new SymbolTable($global);
+    $firstLocal->define('c');
+    $firstLocal->define('d');
+
+    $secondLocal = new SymbolTable($firstLocal);
+    $secondLocal->define('e');
+    $secondLocal->define('f');
+
+    $tests = [
+        [
+            $firstLocal,
+            [
+                new Symbol('a', Scope::GLOBAL, 0),
+                new Symbol('b', Scope::GLOBAL, 1),
+                new Symbol('c', Scope::LOCAL, 0),
+                new Symbol('d', Scope::LOCAL, 1),
+            ],
+            [],
+        ],
+        [
+            $secondLocal,
+            [
+                new Symbol('a', Scope::GLOBAL, 0),
+                new Symbol('b', Scope::GLOBAL, 1),
+                new Symbol('c', Scope::FREE, 0),
+                new Symbol('d', Scope::FREE, 1),
+                new Symbol('e', Scope::LOCAL, 0),
+                new Symbol('f', Scope::LOCAL, 1),
+            ],
+            [
+                new Symbol('c', Scope::LOCAL, 0),
+                new Symbol('d', Scope::LOCAL, 1),
+            ],
+        ],
+    ];
+
+    foreach ($tests as $test) {
+        foreach ($test[1] as $symbol) {
+            $result = $test[0]->resolve($symbol->name);
+            expect($result)->not->toBeNull();
+            expect(print_r($result, true))->toBe(print_r($symbol, true));
+        }
+
+        expect($test[0]->free)->toHaveCount(count($test[2]));
+
+        foreach ($test[2] as $i => $symbol) {
+            $result = $test[0]->free[$i];
+            expect($result)->not->toBeNull();
+            expect(print_r($result, true))->toBe(print_r($symbol, true));
+        }
+    }
+});
+
+it('does not resolve unresolvable free', function () {
+    $global = new SymbolTable();
+    $global->define('a');
+
+    $firstLocal = new SymbolTable($global);
+    $firstLocal->define('c');
+
+    $secondLocal = new SymbolTable($firstLocal);
+    $secondLocal->define('e');
+    $secondLocal->define('f');
+
+    $expected = [
+        new Symbol('a', Scope::GLOBAL, 0),
+        new Symbol('c', Scope::FREE, 0),
+        new Symbol('e', Scope::LOCAL, 0),
+        new Symbol('f', Scope::LOCAL, 1),
+    ];
+
+    foreach ($expected as $symbol) {
+        $result = $secondLocal->resolve($symbol->name);
+        expect($result)->not->toBeNull();
+        expect(print_r($result, true))->toBe(print_r($symbol, true));
+    }
+
+    $expectedUnresolvable = ['b', 'd'];
+
+    foreach ($expectedUnresolvable as $name) {
+        expect($secondLocal->resolve($name))->toBeNull();
+    }
+});
+
+it('defines and resolves function names', function () {
+    $global = new SymbolTable();
+    $global->defineFunction('a');
+
+    $expected = new Symbol('a', Scope::FUNCTION, 0);
+
+    $result = $global->resolve($expected->name);
+    expect($result)->not->toBeNull();
+    expect(print_r($result, true))->toBe(print_r($expected, true));
+});
+
+it('shadowing function names', function () {
+    $global = new SymbolTable();
+    $global->defineFunction('a');
+    $global->define('a');
+
+    $expected = new Symbol('a', Scope::GLOBAL, 0);
+
+    $result = $global->resolve($expected->name);
+    expect($result)->not->toBeNull();
+    expect(print_r($result, true))->toBe(print_r($expected, true));
+});

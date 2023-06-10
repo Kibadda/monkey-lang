@@ -263,3 +263,9 @@ it('parses match', function () {
         ],
     );
 });
+
+it('parses function literals with name', function () {
+    $program = createProgram('let myFunction = fn() {}');
+
+    expect($program->statements[0])->toBeLetStatement('myFunction', [FunctionLiteral::class, [], [], 'myFunction']);
+});

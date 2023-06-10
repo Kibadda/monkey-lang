@@ -9,6 +9,7 @@ use Monkey\Object\Builtins;
 use Monkey\Object\EvalArray;
 use Monkey\Object\EvalBoolean;
 use Monkey\Object\EvalBuiltin;
+use Monkey\Object\EvalClosure;
 use Monkey\Object\EvalCompiledFunction;
 use Monkey\Object\EvalHash;
 use Monkey\Object\EvalInteger;
@@ -47,7 +48,8 @@ class VM
     public function __construct(Compiler $compiler, array $globals = [])
     {
         $mainFunction = new EvalCompiledFunction($compiler->currentInstructions(), 0, 0);
-        $mainFrame = new Frame($mainFunction, 0);
+        $mainClosure = new EvalClosure($mainFunction, []);
+        $mainFrame = new Frame($mainClosure, 0);
 
         $this->constants = $compiler->constants;
         $this->globals = $globals;
@@ -246,25 +248,25 @@ class VM
                     $numArguments = $instructions[$ip + 1];
                     $this->currentFrame()->ip += 1;
 
-                    $function = $this->stack[$this->sp - 1 - $numArguments];
+                    $callee = $this->stack[$this->sp - 1 - $numArguments];
 
-                    if ($function instanceof EvalCompiledFunction) {
-                        if ($numArguments != $function->numParameters) {
-                            throw new Exception("wrong number of arguments: want={$function->numParameters}, got={$numArguments}");
+                    if ($callee instanceof EvalClosure) {
+                        if ($numArguments != $callee->function->numParameters) {
+                            throw new Exception("wrong number of arguments: want={$callee->function->numParameters}, got={$numArguments}");
                         }
 
-                        $frame = new Frame($function, $this->sp - $numArguments);
+                        $frame = new Frame($callee, $this->sp - $numArguments);
                         $this->pushFrame($frame);
-                        $this->sp = $frame->basePointer + $function->numLocals;
-                    } else if ($function instanceof EvalBuiltin) {
+                        $this->sp = $frame->basePointer + $callee->function->numLocals;
+                    } else if ($callee instanceof EvalBuiltin) {
                         $arguments = array_slice($this->stack, $this->sp - $numArguments, $numArguments);
 
-                        $result = ($function->builtinFunction)(...$arguments);
+                        $result = ($callee->builtinFunction)(...$arguments);
                         $this->sp = $this->sp - $numArguments - 1;
 
                         $this->push($result ?: $this->null);
                     } else {
-                        throw new Exception('calling non-function');
+                        throw new Exception('calling non-closure or non-builtin');
                     }
                 }),
                 Code::RETURN_VALUE => call_user_func(function () {
@@ -305,13 +307,40 @@ class VM
 
                     $this->push($definition);
                 }),
+                Code::CLOSURE => call_user_func(function () use ($ip, $code, $instructions) {
+                    $constIndex = $code->readInt($instructions, $ip + 1);
+                    $numFrees = $instructions[$ip + 3];
+                    $this->currentFrame()->ip += 3;
+
+                    $constant = $this->constants[$constIndex];
+                    if (!$constant instanceof EvalCompiledFunction) {
+                        throw new Exception("not a function: {$constant->type()->name}");
+                    }
+
+                    $free = [];
+                    for ($i = 0; $i < $numFrees; $i++) {
+                        $free[$i] = $this->stack[$this->sp - $numFrees + $i];
+                    }
+                    $this->sp -= $numFrees;
+
+                    $this->push(new EvalClosure($constant, $free));
+                }),
+                Code::GET_FREE => call_user_func(function () use ($ip, $instructions) {
+                    $freeIndex = $instructions[$ip + 1];
+                    $this->currentFrame()->ip += 1;
+
+                    $currenClosure = $this->currentFrame()->closure;
+
+                    $this->push($currenClosure->free[$freeIndex]);
+                }),
+                Code::CURRENT_CLOSURE => $this->push($this->currentFrame()->closure),
                 default => null,
                 // default => throw new Exception("code not found for int: {$instructions[$ip]}"),
             };
         }
     }
 
-    public function push(EvalObject $evalObject): void
+    public function push(?EvalObject $evalObject): void
     {
         if ($this->sp >= self::STACK_SIZE) {
             throw new Exception('stack overflow');

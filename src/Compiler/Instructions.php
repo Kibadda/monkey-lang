@@ -106,6 +106,7 @@ class Instructions implements ArrayAccess, Iterator
                 default => match (count($operands)) {
                     0 => $definition->name,
                     1 => "{$definition->name} {$operands[0]}",
+                    2 => "{$definition->name} {$operands[0]} {$operands[1]}",
                     default => "ERROR: unhandled operandCount for {$definition->name}",
                 },
             });

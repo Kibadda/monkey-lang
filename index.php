@@ -7,15 +7,10 @@ use Monkey\VM\VM;
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-$lexer = new Lexer('len(1)');
+$lexer = new Lexer('let countDown = fn(x) { countDown(x - 1) }; countDown(1)');
 $parser = new Parser($lexer);
 $program = $parser->parseProgam();
 $compiler = new Compiler();
 $compiler->compile($program);
-$vm = new VM($compiler);
 
-$vm->run();
-
-$stackElem = $vm->lastPoppedStackElem();
-
-print_r($stackElem);
+print_r($compiler);

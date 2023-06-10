@@ -15,6 +15,7 @@ class FunctionLiteral implements Expression
         public Token $token,
         public array $parameters,
         public BlockStatement $body,
+        public string $name = '',
     ) {
     }
 
@@ -31,7 +32,7 @@ class FunctionLiteral implements Expression
             $parameters[] = $parameter->string();
         }
 
-        return "{$this->tokenLiteral()}(" . implode(', ', $parameters) . ") {$this->body->string()}";
+        return "{$this->tokenLiteral()}<{$this->name}>(" . implode(', ', $parameters) . ") {$this->body->string()}";
     }
 
     public function modify(callable $modifier): Node

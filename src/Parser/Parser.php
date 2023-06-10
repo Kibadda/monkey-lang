@@ -95,6 +95,10 @@ class Parser
             return $value;
         }
 
+        if ($value instanceof FunctionLiteral) {
+            $value->name = $name->value;
+        }
+
         if ($this->peekTokenIs(Type::SEMICOLON)) {
             $this->nextToken();
         }

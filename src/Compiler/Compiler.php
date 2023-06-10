@@ -119,9 +119,9 @@ class Compiler
                 $this->compile($statement);
             }
         } else if ($node instanceof LetStatement) {
+            $symbol = $this->symbolTable->define($node->name->value);
             $this->compile($node->value);
 
-            $symbol = $this->symbolTable->define($node->name->value);
             $this->emit($symbol->scope == Scope::GLOBAL ? Code::SET_GLOBAL : Code::SET_LOCAL, $symbol->index);
         } else if ($node instanceof Identifier) {
             $symbol = $this->symbolTable->resolve($node->value);
@@ -168,6 +168,10 @@ class Compiler
         } else if ($node instanceof FunctionLiteral) {
             $this->enterScope();
 
+            if (!empty($node->name)) {
+                $this->symbolTable->defineFunction($node->name);
+            }
+
             foreach ($node->parameters as $parameter) {
                 $this->symbolTable->define($parameter->value);
             }
@@ -181,11 +185,16 @@ class Compiler
                 $this->emit(Code::RETURN);
             }
 
+            $freeSymbols = $this->symbolTable->free;
             $numLocals = $this->symbolTable->numDefinitions;
             $instructions = $this->leaveScope();
 
+            foreach ($freeSymbols as $symbol) {
+                $this->loadSymbol($symbol);
+            }
+
             $compiledFunction = new EvalCompiledFunction($instructions, $numLocals, count($node->parameters));
-            $this->emit(Code::CONSTANT, $this->addConstant($compiledFunction));
+            $this->emit(Code::CLOSURE, $this->addConstant($compiledFunction), count($freeSymbols));
         } else if ($node instanceof ReturnStatement) {
             $this->compile($node->value);
 
@@ -304,10 +313,12 @@ class Compiler
 
     public function loadSymbol(Symbol $symbol): void
     {
-        $this->emit(match ($symbol->scope) {
-            Scope::GLOBAL => Code::GET_GLOBAL,
-            Scope::LOCAL => Code::GET_LOCAL,
-            Scope::BUILTIN => Code::GET_BUILTIN,
-        }, $symbol->index);
+        match ($symbol->scope) {
+            Scope::GLOBAL => $this->emit(Code::GET_GLOBAL, $symbol->index),
+            Scope::LOCAL => $this->emit(Code::GET_LOCAL, $symbol->index),
+            Scope::BUILTIN => $this->emit(Code::GET_BUILTIN, $symbol->index),
+            Scope::FREE => $this->emit(Code::GET_FREE, $symbol->index),
+            Scope::FUNCTION => $this->emit(Code::CURRENT_CLOSURE),
+        };
     }
 }

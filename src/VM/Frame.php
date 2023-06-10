@@ -3,12 +3,12 @@
 namespace Monkey\VM;
 
 use Monkey\Compiler\Instructions;
-use Monkey\Object\EvalCompiledFunction;
+use Monkey\Object\EvalClosure;
 
 class Frame
 {
     public function __construct(
-        public EvalCompiledFunction $function,
+        public EvalClosure $closure,
         public int $basePointer,
         public int $ip = -1,
     ) {
@@ -16,6 +16,6 @@ class Frame
 
     public function instructions(): Instructions
     {
-        return $this->function->instructions;
+        return $this->closure->function->instructions;
     }
 }

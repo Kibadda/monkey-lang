@@ -2,6 +2,7 @@
 
 namespace Monkey\Code;
 
+use Exception;
 use Monkey\Compiler\Instructions;
 
 enum Code: int
@@ -33,6 +34,9 @@ enum Code: int
     case GET_LOCAL = 25;
     case SET_LOCAL = 26;
     case GET_BUILTIN = 27;
+    case CLOSURE = 28;
+    case GET_FREE = 29;
+    case CURRENT_CLOSURE = 30;
 
     public function definition(): Definition
     {
@@ -59,17 +63,23 @@ enum Code: int
             self::NULL,
             self::INDEX,
             self::RETURN_VALUE,
-            self::RETURN => new Definition($this->name, []),
+            self::RETURN,
+            self::CURRENT_CLOSURE => new Definition($this->name, []),
             self::CALL,
             self::GET_LOCAL,
             self::SET_LOCAL,
-            self::GET_BUILTIN => new Definition($this->name, [1]),
+            self::GET_BUILTIN,
+            self::GET_FREE => new Definition($this->name, [1]),
+            self::CLOSURE => new Definition($this->name, [2, 1]),
         };
     }
 
     public function make(...$operands): Instructions
     {
+        print_r($this);
         $definition = $this->definition();
+        print_r($definition);
+        print_r($operands);
 
         $instructionLength = 1;
         foreach ($definition->operandWidths as $width) {

@@ -186,67 +186,67 @@ it('compiles', function (string $input, array $expectedConstants, array $expecte
     [
         'fn() { return 5 + 10 }',
         [[EvalInteger::class, 5], [EvalInteger::class, 10], [EvalCompiledFunction::class, [Code::CONSTANT->make(0), Code::CONSTANT->make(1), Code::ADD->make(), Code::RETURN_VALUE->make()]]],
-        [Code::CONSTANT->make(2), Code::POP->make()],
+        [Code::CLOSURE->make(2, 0), Code::POP->make()],
     ],
     [
         'fn() { 5 + 10 }',
         [[EvalInteger::class, 5], [EvalInteger::class, 10], [EvalCompiledFunction::class, [Code::CONSTANT->make(0), Code::CONSTANT->make(1), Code::ADD->make(), Code::RETURN_VALUE->make()]]],
-        [Code::CONSTANT->make(2), Code::POP->make()],
+        [Code::CLOSURE->make(2, 0), Code::POP->make()],
     ],
     [
         'fn() { 1; 2 }',
         [[EvalInteger::class, 1], [EvalInteger::class, 2], [EvalCompiledFunction::class, [Code::CONSTANT->make(0), Code::POP->make(), Code::CONSTANT->make(1), Code::RETURN_VALUE->make()]]],
-        [Code::CONSTANT->make(2), Code::POP->make()],
+        [Code::CLOSURE->make(2, 0), Code::POP->make()],
     ],
     [
         'fn() { }',
         [[EvalCompiledFunction::class, [Code::RETURN->make()]]],
-        [Code::CONSTANT->make(0), Code::POP->make()],
+        [Code::CLOSURE->make(0, 0), Code::POP->make()],
     ],
     [
         'fn () { 24 }()',
         [[EvalInteger::class, 24], [EvalCompiledFunction::class, [Code::CONSTANT->make(0), Code::RETURN_VALUE->make()]]],
-        [Code::CONSTANT->make(1), Code::CALL->make(0), Code::POP->make()],
+        [Code::CLOSURE->make(1, 0), Code::CALL->make(0), Code::POP->make()],
     ],
     [
         'let noArg = fn() { 24 }; noArg()',
         [[EvalInteger::class, 24], [EvalCompiledFunction::class, [Code::CONSTANT->make(0), Code::RETURN_VALUE->make()]]],
-        [Code::CONSTANT->make(1), Code::SET_GLOBAL->make(0), Code::GET_GLOBAL->make(0), Code::CALL->make(0), Code::POP->make()],
+        [Code::CLOSURE->make(1, 0), Code::SET_GLOBAL->make(0), Code::GET_GLOBAL->make(0), Code::CALL->make(0), Code::POP->make()],
     ],
     [
         'let num = 55; fn() { num }',
         [[EvalInteger::class, 55], [EvalCompiledFunction::class, [Code::GET_GLOBAL->make(0), Code::RETURN_VALUE->make()]]],
-        [Code::CONSTANT->make(0), Code::SET_GLOBAL->make(0), Code::CONSTANT->make(1), Code::POP->make()],
+        [Code::CONSTANT->make(0), Code::SET_GLOBAL->make(0), Code::CLOSURE->make(1, 0), Code::POP->make()],
     ],
     [
         'fn() { let num = 55; num }',
         [[EvalInteger::class, 55], [EvalCompiledFunction::class, [Code::CONSTANT->make(0), Code::SET_LOCAL->make(0), Code::GET_LOCAL->make(0), Code::RETURN_VALUE->make()]]],
-        [Code::CONSTANT->make(1), Code::POP->make()],
+        [Code::CLOSURE->make(1, 0), Code::POP->make()],
     ],
     [
         'fn() { let a = 55; let b = 77; a + b }',
         [[EvalInteger::class, 55], [EvalInteger::class, 77], [EvalCompiledFunction::class, [Code::CONSTANT->make(0), Code::SET_LOCAL->make(0), Code::CONSTANT->make(1), Code::SET_LOCAL->make(1), Code::GET_LOCAL->make(0), Code::GET_LOCAL->make(1), Code::ADD->make(), Code::RETURN_VALUE->make()]]],
-        [Code::CONSTANT->make(2), Code::POP->make()],
+        [Code::CLOSURE->make(2, 0), Code::POP->make()],
     ],
     [
         'let oneArg = fn(a) {}; oneArg(24)',
         [[EvalCompiledFunction::class, [Code::RETURN->make()]], [EvalInteger::class, 24]],
-        [Code::CONSTANT->make(0), Code::SET_GLOBAL->make(0), Code::GET_GLOBAL->make(0), Code::CONSTANT->make(1), Code::CALL->make(1), Code::POP->make()],
+        [Code::CLOSURE->make(0, 0), Code::SET_GLOBAL->make(0), Code::GET_GLOBAL->make(0), Code::CONSTANT->make(1), Code::CALL->make(1), Code::POP->make()],
     ],
     [
         'let manyArg = fn(a, b, c) {}; manyArg(24, 25, 26)',
         [[EvalCompiledFunction::class, [Code::RETURN->make()]], [EvalInteger::class, 24], [EvalInteger::class, 25], [EvalInteger::class, 26]],
-        [Code::CONSTANT->make(0), Code::SET_GLOBAL->make(0), Code::GET_GLOBAL->make(0), Code::CONSTANT->make(1), Code::CONSTANT->make(2), Code::CONSTANT->make(3), Code::CALL->make(3), Code::POP->make()],
+        [Code::CLOSURE->make(0, 0), Code::SET_GLOBAL->make(0), Code::GET_GLOBAL->make(0), Code::CONSTANT->make(1), Code::CONSTANT->make(2), Code::CONSTANT->make(3), Code::CALL->make(3), Code::POP->make()],
     ],
     [
         'let oneArg = fn(a) { a }; oneArg(24)',
         [[EvalCompiledFunction::class, [Code::GET_LOCAL->make(0), Code::RETURN_VALUE->make()]], [EvalInteger::class, 24]],
-        [Code::CONSTANT->make(0), Code::SET_GLOBAL->make(0), Code::GET_GLOBAL->make(0), Code::CONSTANT->make(1), Code::CALL->make(1), Code::POP->make()],
+        [Code::CLOSURE->make(0, 0), Code::SET_GLOBAL->make(0), Code::GET_GLOBAL->make(0), Code::CONSTANT->make(1), Code::CALL->make(1), Code::POP->make()],
     ],
     [
         'let manyArg = fn(a, b, c) { a; b; c }; manyArg(24, 25, 26)',
         [[EvalCompiledFunction::class, [Code::GET_LOCAL->make(0), Code::POP->make(), Code::GET_LOCAL->make(1), Code::POP->make(), Code::GET_LOCAL->make(2), Code::RETURN_VALUE->make()]], [EvalInteger::class, 24], [EvalInteger::class, 25], [EvalInteger::class, 26]],
-        [Code::CONSTANT->make(0), Code::SET_GLOBAL->make(0), Code::GET_GLOBAL->make(0), Code::CONSTANT->make(1), Code::CONSTANT->make(2), Code::CONSTANT->make(3), Code::CALL->make(3), Code::POP->make()],
+        [Code::CLOSURE->make(0, 0), Code::SET_GLOBAL->make(0), Code::GET_GLOBAL->make(0), Code::CONSTANT->make(1), Code::CONSTANT->make(2), Code::CONSTANT->make(3), Code::CALL->make(3), Code::POP->make()],
     ],
     [
         'match (1) { 1 -> true, 2 -> false, 3 -> "one" }',
@@ -261,7 +261,32 @@ it('compiles', function (string $input, array $expectedConstants, array $expecte
     [
         'fn() { len([]) }',
         [[EvalCompiledFunction::class, [Code::GET_BUILTIN->make(0), Code::ARRAY->make(0), Code::CALL->make(1), Code::RETURN_VALUE->make()]]],
-        [Code::CONSTANT->make(0), Code::POP->make()],
+        [Code::CLOSURE->make(0, 0), Code::POP->make()],
+    ],
+    [
+        'fn(a) { fn(b) { a + b } }',
+        [[EvalCompiledFunction::class, [Code::GET_FREE->make(0), Code::GET_LOCAL->make(0), Code::ADD->make(), Code::RETURN_VALUE->make()]], [EvalCompiledFunction::class, [Code::GET_LOCAL->make(0), Code::CLOSURE->make(0, 1), Code::RETURN_VALUE->make()]]],
+        [Code::CLOSURE->make(1, 0), Code::POP->make()],
+    ],
+    [
+        'fn(a) { fn(b) { fn(c) { a + b + c } } }',
+        [[EvalCompiledFunction::class, [Code::GET_FREE->make(0), Code::GET_FREE->make(1), Code::ADD->make(), Code::GET_LOCAL->make(0), Code::ADD->make(), Code::RETURN_VALUE->make()]], [EvalCompiledFunction::class, [Code::GET_FREE->make(0), Code::GET_LOCAL->make(0), Code::CLOSURE->make(0, 2), Code::RETURN_VALUE->make()]], [EvalCompiledFunction::class, [Code::GET_LOCAL->make(0), Code::CLOSURE->make(1, 1), Code::RETURN_VALUE->make()]]],
+        [Code::CLOSURE->make(2, 0), Code::POP->make()],
+    ],
+    [
+        'let global = 55; fn() { let a = 66; fn() { let b = 77; fn() { let c = 88; global + a + b + c } } }',
+        [[EvalInteger::class, 55], [EvalInteger::class, 66], [EvalInteger::class, 77], [EvalInteger::class, 88], [EvalCompiledFunction::class, [Code::CONSTANT->make(3), Code::SET_LOCAL->make(0), Code::GET_GLOBAL->make(0), Code::GET_FREE->make(0), Code::ADD->make(), Code::GET_FREE->make(1), Code::ADD->make(), Code::GET_LOCAL->make(0), Code::ADD->make(), Code::RETURN_VALUE->make()]], [EvalCompiledFunction::class, [Code::CONSTANT->make(2), Code::SET_LOCAL->make(0), Code::GET_FREE->make(0), Code::GET_LOCAL->make(0), Code::CLOSURE->make(4, 2), Code::RETURN_VALUE->make()]], [EvalCompiledFunction::class, [Code::CONSTANT->make(1), Code::SET_LOCAL->make(0), Code::GET_LOCAL->make(0), Code::CLOSURE->make(5, 1), Code::RETURN_VALUE->make()]]],
+        [Code::CONSTANT->make(0), Code::SET_GLOBAL->make(0), Code::CLOSURE->make(6, 0), Code::POP->make()],
+    ],
+    [
+        'let countDown = fn(x) { countDown(x - 1) }; countDown(1)',
+        [[EvalInteger::class, 1], [EvalCompiledFunction::class, [Code::CURRENT_CLOSURE->make(), Code::GET_LOCAL->make(0), Code::CONSTANT->make(0), Code::SUB->make(), Code::CALL->make(1), Code::RETURN_VALUE->make()]], [EvalInteger::class, 1]],
+        [Code::CLOSURE->make(1, 0), Code::SET_GLOBAL->make(0), Code::GET_GLOBAL->make(0), Code::CONSTANT->make(2), Code::CALL->make(1), Code::POP->make()],
+    ],
+    [
+        'let wrapper = fn() { let countDown = fn(x) { countDown(x - 1) }; countDown(1) }; wrapper()',
+        [[EvalInteger::class, 1], [EvalCompiledFunction::class, [Code::CURRENT_CLOSURE->make(), Code::GET_LOCAL->make(0), Code::CONSTANT->make(0), Code::SUB->make(), Code::CALL->make(1), Code::RETURN_VALUE->make()]], [EvalInteger::class, 1], [EvalCompiledFunction::class, [Code::CLOSURE->make(1, 0), Code::SET_LOCAL->make(0), Code::GET_LOCAL->make(0), Code::CONSTANT->make(2), Code::CALL->make(1), Code::RETURN_VALUE->make()]]],
+        [Code::CLOSURE->make(3, 0), Code::SET_GLOBAL->make(0), Code::GET_GLOBAL->make(0), Code::CALL->make(0), Code::POP->make()],
     ],
 ]);
 
@@ -271,12 +296,14 @@ it('stringyfies', function () {
         Code::GET_LOCAL->make(1),
         Code::CONSTANT->make(2),
         Code::CONSTANT->make(65535),
+        Code::CLOSURE->make(65535, 255),
     ]);
 
     $expected = '0000 ADD
 0001 GET_LOCAL 1
 0003 CONSTANT 2
 0006 CONSTANT 65535
+0009 CLOSURE 65535 255
 ';
 
     expect($instructions->string())->toBe($expected, json_encode($instructions));
