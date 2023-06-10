@@ -22,6 +22,7 @@ use Monkey\Ast\Statement\BlockStatement;
 use Monkey\Ast\Statement\ExpressionStatement;
 use Monkey\Ast\Statement\LetStatement;
 use Monkey\Ast\Statement\ReturnStatement;
+use Monkey\Object\Builtins;
 use Monkey\Object\Environment;
 use Monkey\Object\EvalArray;
 use Monkey\Object\EvalBoolean;
@@ -45,89 +46,12 @@ class Evaluator
     public function __construct(
         private Environment $environment,
         private array $singletons = [],
-        private array $builtins = [],
+        private Builtins $builtins = new Builtins(),
     ) {
         $this->singletons = [
             true => new EvalBoolean(true),
             false => new EvalBoolean(false),
             null => new EvalNull(),
-        ];
-
-        $this->builtins = [
-            'len' => new EvalBuiltin(function (...$args) {
-                if (count($args) != 1) {
-                    return new EvalError('wrong number of arguments: got ' . count($args) . ', wanted 1');
-                }
-
-                return match ($args[0]::class) {
-                    EvalString::class => new EvalInteger(strlen($args[0]->value)),
-                    EvalArray::class => new EvalInteger(count($args[0]->elements)),
-                    default => new EvalError("argument to `len` not supported, got {$args[0]->type()->name}"),
-                };
-            }),
-            'first' => new EvalBuiltin(function (...$args) use ($singletons) {
-                if (count($args) != 1) {
-                    return new EvalError('wrong number of arguments: got ' . count($args) . ', wanted 1');
-                }
-
-                if ($args[0]->type() != EvalType::ARRAY) {
-                    return new EvalError("argument to `first` must be ARRAY: got {$args[0]->type()->name}");
-                }
-
-                if (count($args[0]->elements) > 0) {
-                    return $args[0]->elements[0];
-                }
-
-                return $singletons[null];
-            }),
-            'last' => new EvalBuiltin(function (...$args) use ($singletons) {
-                if (count($args) != 1) {
-                    return new EvalError('wrong number of arguments: got ' . count($args) . ', wanted 1');
-                }
-
-                if ($args[0]->type() != EvalType::ARRAY) {
-                    return new EvalError("argument to `first` must be ARRAY: got {$args[0]->type()->name}");
-                }
-
-                if (count($args[0]->elements) > 0) {
-                    return $args[0]->elements[count($args[0]->elements) - 1];
-                }
-
-                return $singletons[null];
-            }),
-            'rest' => new EvalBuiltin(function (...$args) use ($singletons) {
-                if (count($args) != 1) {
-                    return new EvalError('wrong number of arguments: got ' . count($args) . ', wanted 1');
-                }
-
-                if ($args[0]->type() != EvalType::ARRAY) {
-                    return new EvalError("argument to `first` must be ARRAY: got {$args[0]->type()->name}");
-                }
-
-                if (count($args[0]->elements) > 0) {
-                    return new EvalArray(array_splice($args[0]->elements, 1));
-                }
-
-                return $singletons[null];
-            }),
-            'push' => new EvalBuiltin(function (...$args) {
-                if (count($args) != 2) {
-                    return new EvalError('wrong number of arguments: got ' . count($args) . ', wanted 2');
-                }
-
-                if ($args[0]->type() != EvalType::ARRAY) {
-                    return new EvalError("argument to `first` must be ARRAY: got {$args[0]->type()->name}");
-                }
-
-                return new EvalArray([...$args[0]->elements, $args[1]]);
-            }),
-            'puts' => new EvalBuiltin(function (...$args) use ($singletons) {
-                foreach ($args as $arg) {
-                    fwrite(STDOUT, "{$arg->inspect()}\n");
-                }
-
-                return $singletons[null];
-            }),
         ];
     }
 
