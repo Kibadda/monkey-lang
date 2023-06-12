@@ -2,6 +2,7 @@
 
 namespace Monkey\Ast\Expression;
 
+use Exception;
 use Monkey\Ast\Node;
 use Monkey\Token\Token;
 
@@ -34,7 +35,19 @@ class ArrayLiteral implements Expression
 
     public function modify(callable $modifier): Node
     {
-        $this->elements = array_map(fn (Expression $element) => $element->modify($modifier), $this->elements);
+        $elements = [];
+
+        foreach ($this->elements as $element) {
+            $elem = $element->modify($modifier);
+
+            if (!$elem instanceof Expression) {
+                throw new Exception("modified node `element` does not match class: got Statement, want Expression");
+            }
+
+            $elements[] = $elem;
+        }
+
+        $this->elements = $elements;
 
         return $modifier($this);
     }

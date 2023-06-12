@@ -2,6 +2,7 @@
 
 namespace Monkey\Ast\Expression;
 
+use Exception;
 use Monkey\Ast\Node;
 use Monkey\Ast\Statement\BlockStatement;
 use Monkey\Token\Token;
@@ -37,8 +38,26 @@ class FunctionLiteral implements Expression
 
     public function modify(callable $modifier): Node
     {
-        $this->parameters = array_map(fn (Identifier $parameter) => $parameter->modify($modifier), $this->parameters);
-        $this->body = $this->body->modify($modifier);
+        $parameters = [];
+
+        foreach ($this->parameters as $parameter) {
+            $param = $parameter->modify($modifier);
+
+            if (!$param instanceof Identifier) {
+                throw new Exception("modified node `parameter` does not match class: got Statement, want Expression");
+            }
+
+            $parameters[] = $param;
+        }
+
+        $body = $this->body->modify($modifier);
+
+        if (!$body instanceof BlockStatement) {
+            throw new Exception("modified node `body` does not match class: got Expression, want Statement");
+        }
+
+        $this->parameters = $parameters;
+        $this->body = $body;
 
         return $modifier($this);
     }

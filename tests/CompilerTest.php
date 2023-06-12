@@ -311,13 +311,13 @@ it('stringyfies', function () {
 0009 CLOSURE 65535 255
 ';
 
-    expect($instructions->string())->toBe($expected, json_encode($instructions));
+    expect($instructions->string())->toBe($expected, $instructions->string());
 });
 
 it('reads', function (Code $code, $operands, $bytesRead) {
     $instruction = $code->make(...$operands);
 
-    list($operandsRead, $n) = $code->readOperands($instruction->slice(1));
+    $operandsRead = $code->readOperands($instruction->slice(1), $n);
     expect($n)->toBe($bytesRead);
     foreach ($operands as $i => $operand) {
         expect($operandsRead[$i])->toBe($operand);

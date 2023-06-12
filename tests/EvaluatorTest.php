@@ -31,7 +31,7 @@ it('evaluates', function ($input, $eval, $value) {
             expect($evaluated->pairs)->toHaveCount(count($value));
             foreach ($evaluated->pairs as $key => $pair) {
                 expect(array_key_exists($key, $value))->toBeTrue();
-                expect($pair[1]->value)->toBe($value[$key]);
+                expect($pair->value)->toBe($value[$key]);
             }
         }),
         EvalNull::class => null,

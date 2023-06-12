@@ -2,6 +2,7 @@
 
 namespace Monkey\Ast\Expression;
 
+use Exception;
 use Monkey\Ast\Node;
 use Monkey\Token\Token;
 
@@ -36,11 +37,37 @@ class MatchLiteral implements Expression
 
     public function modify(callable $modifier): Node
     {
-        $this->subject->modify($modifier);
+        $subject = $this->subject->modify($modifier);
+
+        if (!$subject instanceof Expression) {
+            throw new Exception("modified node `subject` does not match class: got Statement, want Expression");
+        }
+
+        $this->subject = $subject;
 
         foreach ($this->branches as $branch) {
-            $branch->condition->modify($modifier);
-            $branch->consequence->modify($modifier);
+            $condition = $branch->condition->modify($modifier);
+            $consequence = $branch->consequence->modify($modifier);
+
+            if (!$condition instanceof Expression) {
+                throw new Exception("modified node `branch.condition` does not match class: got Statement, want Expression");
+            }
+            if (!$consequence instanceof Expression) {
+                throw new Exception("modified node `branch.consequence` does not match class: got Statement, want Expression");
+            }
+
+            $branch->condition = $condition;
+            $branch->consequence = $consequence;
+        }
+
+        if ($this->default != null) {
+            $default = $this->default->modify($modifier);
+
+            if (!$default instanceof Expression) {
+                throw new Exception("modified node `default` does not match class: got Statement, want Expression");
+            }
+
+            $this->default = $default;
         }
 
         return $modifier($this);

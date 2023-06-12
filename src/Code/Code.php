@@ -2,6 +2,7 @@
 
 namespace Monkey\Code;
 
+use Exception;
 use Monkey\Compiler\Instructions;
 
 enum Code: int
@@ -73,7 +74,7 @@ enum Code: int
         };
     }
 
-    public function make(...$operands): Instructions
+    public function make(int ...$operands): Instructions
     {
         $definition = $this->definition();
 
@@ -96,13 +97,17 @@ enum Code: int
                 1 => call_user_func(function () use ($operand, $instruction) {
                     $instruction[] = $operand;
                 }),
+                default => null,
             };
         }
 
         return $instruction;
     }
 
-    public function readOperands(Instructions $instructions): array
+    /**
+     * @return int[]
+     */
+    public function readOperands(Instructions $instructions, ?int &$offset): array
     {
         $operands = [];
         $offset = 0;
@@ -113,14 +118,15 @@ enum Code: int
                     $operands[$i] = ($instructions[$offset] << 0x8) | $instructions[$offset + 1];
                 }),
                 1 => call_user_func(function () use (&$operands, $instructions, $offset, $i) {
-                    $operands[$i] = $instructions[$offset];
+                    $operands[$i] = $instructions[$offset] ?? throw new Exception("instructions too short: got {$instructions->count()}, wanted {$offset}");
                 }),
+                default => null,
             };
 
             $offset += $width;
         }
 
-        return [$operands, $offset];
+        return $operands;
     }
 
     public function readInt(Instructions $instructions, int $offset): int

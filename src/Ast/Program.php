@@ -2,6 +2,7 @@
 
 namespace Monkey\Ast;
 
+use Exception;
 use Monkey\Ast\Statement\Statement;
 
 class Program implements Node
@@ -39,7 +40,18 @@ class Program implements Node
 
     public function modify(callable $modifier): Node
     {
-        $this->statements = array_map(fn (Statement $statement) => $statement->modify($modifier), $this->statements);
+        $statements = [];
+        foreach ($this->statements as $statement) {
+            $stmt = $statement->modify($modifier);
+
+            if (!$stmt instanceof Statement) {
+                throw new Exception("modified node `statement` does not match class: got Expression, want Statement");
+            }
+
+            $statements[] = $stmt;
+        }
+
+        $this->statements = $statements;
 
         return $modifier($this);
     }

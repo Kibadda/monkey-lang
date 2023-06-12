@@ -37,7 +37,7 @@ class Builtins
                 return new EvalError('wrong number of arguments: got ' . count($args) . ', wanted 1');
             }
 
-            if ($args[0]->type() != EvalType::ARRAY) {
+            if (!$args[0] instanceof EvalArray) {
                 return new EvalError("argument to `first` must be ARRAY: got {$args[0]->type()->name}");
             }
 
@@ -53,7 +53,7 @@ class Builtins
                 return new EvalError('wrong number of arguments: got ' . count($args) . ', wanted 1');
             }
 
-            if ($args[0]->type() != EvalType::ARRAY) {
+            if (!$args[0] instanceof EvalArray) {
                 return new EvalError("argument to `last` must be ARRAY: got {$args[0]->type()->name}");
             }
 
@@ -69,7 +69,7 @@ class Builtins
                 return new EvalError('wrong number of arguments: got ' . count($args) . ', wanted 1');
             }
 
-            if ($args[0]->type() != EvalType::ARRAY) {
+            if (!$args[0] instanceof EvalArray) {
                 return new EvalError("argument to `rest` must be ARRAY: got {$args[0]->type()->name}");
             }
 
@@ -85,7 +85,7 @@ class Builtins
                 return new EvalError('wrong number of arguments: got ' . count($args) . ', wanted 2');
             }
 
-            if ($args[0]->type() != EvalType::ARRAY) {
+            if (!$args[0] instanceof EvalArray) {
                 return new EvalError("argument to `push` must be ARRAY: got {$args[0]->type()->name}");
             }
 

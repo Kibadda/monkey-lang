@@ -129,8 +129,8 @@ expect()->extend('toBeHashLiteral', function (array $pairs) {
     expect($this->value)->toBeInstanceOf(HashLiteral::class);
     expect($this->value->pairs)->toHaveCount(count($pairs));
     foreach ($this->value->pairs as $i => $pair) {
-        expect($pair[0])->toBeExpression(...$pairs[$i][0]);
-        expect($pair[1])->toBeExpression(...$pairs[$i][1]);
+        expect($pair->key)->toBeExpression(...$pairs[$i][0]);
+        expect($pair->value)->toBeExpression(...$pairs[$i][1]);
     }
 });
 

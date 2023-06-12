@@ -22,7 +22,7 @@ class Environment
     ) {
     }
 
-    public function defineMacros(Program $program)
+    public function defineMacros(Program $program): void
     {
         $definitions = [];
 
@@ -49,7 +49,7 @@ class Environment
         }
     }
 
-    public function expandMacros(Program $program)
+    public function expandMacros(Program $program): Node
     {
         return $program->modify(function (Node $node): Node {
             if (!$node instanceof CallExpression) {
@@ -110,7 +110,7 @@ class Environment
         return $evalObject;
     }
 
-    public function extend(Environment $environment)
+    public function extend(Environment $environment): void
     {
         foreach ($environment->store as $key => $evalObject) {
             $this->set($key, $evalObject);

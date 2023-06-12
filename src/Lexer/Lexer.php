@@ -26,7 +26,7 @@ class Lexer
         return strlen($char) == 1 && '0' <= $char && $char <= '9';
     }
 
-    private function readChar()
+    private function readChar(): void
     {
         if ($this->readPosition >= strlen($this->input)) {
             $this->ch = '';
@@ -59,7 +59,7 @@ class Lexer
         return substr($this->input, $pos, $this->position - $pos);
     }
 
-    private function skipWhitespace()
+    private function skipWhitespace(): void
     {
         while ($this->ch == ' ' || $this->ch == "\t" || $this->ch == "\n" || $this->ch == "\r") {
             $this->readChar();
@@ -80,7 +80,7 @@ class Lexer
         $pos = $this->position + 1;
         while (true) {
             $this->readChar();
-            if ($this->ch == '"' || $this->ch = '') {
+            if ($this->ch == '"' || $this->ch == '') {
                 break;
             }
         }
@@ -103,40 +103,16 @@ class Lexer
         }
 
         $token = match ($this->ch) {
-            '=' => call_user_func(function () {
-                if ($this->peekChar() == '=') {
-                    $ch = $this->ch;
-                    $this->readChar();
-                    return new Token(Type::EQ, "{$ch}{$this->ch}");
-                }
-
-                return new Token(Type::ASSIGN, $this->ch);
-            }),
+            '=' => $this->checkEqual(),
             ';' => new Token(Type::SEMICOLON, $this->ch),
             '(' => new Token(Type::LPAREN, $this->ch),
             ')' => new Token(Type::RPAREN, $this->ch),
             ',' => new Token(Type::COMMA, $this->ch),
             '+' => new Token(Type::PLUS, $this->ch),
-            '-' => call_user_func(function () {
-                if ($this->peekChar() == '>') {
-                    $ch = $this->ch;
-                    $this->readChar();
-                    return new Token(Type::ARROW, "{$ch}{$this->ch}");
-                }
-
-                return new Token(Type::MINUS, $this->ch);
-            }),
+            '-' => $this->checkArrow(),
             '/' => new Token(Type::SLASH, $this->ch),
             '*' => new Token(Type::ASTERISK, $this->ch),
-            '!' => call_user_func(function () {
-                if ($this->peekChar() == '=') {
-                    $ch = $this->ch;
-                    $this->readChar();
-                    return new Token(Type::NOT_EQ, "{$ch}{$this->ch}");
-                }
-
-                return new Token(Type::BANG, $this->ch);
-            }),
+            '!' => $this->checkNotEqual(),
             '<' => new Token(Type::LT, $this->ch),
             '>' => new Token(Type::GT, $this->ch),
             '{' => new Token(Type::LBRACE, $this->ch),
@@ -153,5 +129,38 @@ class Lexer
         $this->readChar();
 
         return $token;
+    }
+
+    private function checkEqual(): Token
+    {
+        if ($this->peekChar() == '=') {
+            $ch = $this->ch;
+            $this->readChar();
+            return new Token(Type::EQ, "{$ch}{$this->ch}");
+        }
+
+        return new Token(Type::ASSIGN, $this->ch);
+    }
+
+    private function checkArrow(): Token
+    {
+        if ($this->peekChar() == '>') {
+            $ch = $this->ch;
+            $this->readChar();
+            return new Token(Type::ARROW, "{$ch}{$this->ch}");
+        }
+
+        return new Token(Type::MINUS, $this->ch);
+    }
+
+    private function checkNotEqual(): Token
+    {
+        if ($this->peekChar() == '=') {
+            $ch = $this->ch;
+            $this->readChar();
+            return new Token(Type::NOT_EQ, "{$ch}{$this->ch}");
+        }
+
+        return new Token(Type::BANG, $this->ch);
     }
 }

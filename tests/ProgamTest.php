@@ -8,6 +8,7 @@ use Monkey\Ast\Expression\IfExpression;
 use Monkey\Ast\Expression\IndexExpression;
 use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
+use Monkey\Ast\Expression\Pair;
 use Monkey\Ast\Expression\PrefixExpression;
 use Monkey\Ast\Node;
 use Monkey\Ast\Program;
@@ -82,7 +83,7 @@ it('modifies', function (Node $input, Node $expected) {
         new ArrayLiteral($token, [$two(), $two()]),
     ],
     [
-        new HashLiteral($token, [[$one(), $one()]]),
-        new HashLiteral($token, [[$two(), $two()]]),
+        new HashLiteral($token, [new Pair($one(), $two())]),
+        new HashLiteral($token, [new Pair($two(), $two())]),
     ],
 ]);

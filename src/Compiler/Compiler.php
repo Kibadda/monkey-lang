@@ -160,8 +160,8 @@ class Compiler
             $this->emit(Code::ARRAY, count($node->elements));
         } else if ($node instanceof HashLiteral) {
             foreach ($node->pairs as $pair) {
-                $this->compile($pair[0]);
-                $this->compile($pair[1]);
+                $this->compile($pair->key);
+                $this->compile($pair->value);
             }
 
             $this->emit(Code::HASH, count($node->pairs) * 2);
@@ -233,7 +233,7 @@ class Compiler
         return count($this->constants) - 1;
     }
 
-    public function emit(Code $code, ...$operands): int
+    public function emit(Code $code, int ...$operands): int
     {
         $position = $this->addInstruction($code->make(...$operands));
         $this->setLastIntruction($code, $position);
@@ -259,25 +259,25 @@ class Compiler
 
     public function lastInstructionIs(Code $code): bool
     {
-        return $this->currentInstructions()->count() != 0 && $this->scopes[$this->scopeIndex]->lastInstruction->code == $code;
+        return $this->currentInstructions()->count() != 0 && $this->scopes[$this->scopeIndex]->lastInstruction?->code == $code;
     }
 
     public function removeLastPop(): void
     {
-        $this->scopes[$this->scopeIndex]->instructions = $this->currentInstructions()->slice(0, $this->scopes[$this->scopeIndex]->lastInstruction->position);
-        $this->scopes[$this->scopeIndex]->lastInstruction = $this->scopes[$this->scopeIndex]->previousInstruction;
+        if ($this->scopes[$this->scopeIndex]->lastInstruction) {
+            $this->scopes[$this->scopeIndex]->instructions = $this->currentInstructions()->slice(0, $this->scopes[$this->scopeIndex]->lastInstruction->position);
+            $this->scopes[$this->scopeIndex]->lastInstruction = $this->scopes[$this->scopeIndex]->previousInstruction;
+        }
     }
 
     public function replaceInstruction(int $position, Instructions $newInstruction): void
     {
-        for ($i = 0; $i < $newInstruction->count(); $i++) {
-            $this->currentInstructions()[$position + $i] = $newInstruction[$i];
-        }
+        $this->currentInstructions()->replace($newInstruction, $position);
     }
 
     public function changeOperand(int $position, int $operand): void
     {
-        $code = Code::tryFrom($this->currentInstructions()[$position]);
+        $code = Code::tryFrom($this->currentInstructions()[$position]) ?? throw new Exception("unknown instruction code: {$this->currentInstructions()[$position]}");
         $newInstruction = $code->make($operand);
 
         $this->replaceInstruction($position, $newInstruction);
@@ -303,6 +303,10 @@ class Compiler
         unset($this->scopes[$this->scopeIndex]);
         $this->scopeIndex--;
 
+        if ($this->symbolTable->outer == null) {
+            throw new Exception("trying to leave main scope");
+        }
+
         $this->symbolTable = $this->symbolTable->outer;
 
         return $instructions;
@@ -310,9 +314,12 @@ class Compiler
 
     public function replaceLastPopWithReturn(): void
     {
-        $lastPos = $this->scopes[$this->scopeIndex]->lastInstruction->position;
-        $this->replaceInstruction($lastPos, Code::RETURN_VALUE->make());
-        $this->scopes[$this->scopeIndex]->lastInstruction->code = Code::RETURN_VALUE;
+        $lastInstruction = $this->scopes[$this->scopeIndex]->lastInstruction;
+        if ($lastInstruction) {
+            $lastPos = $lastInstruction->position;
+            $this->replaceInstruction($lastPos, Code::RETURN_VALUE->make());
+            $lastInstruction->code = Code::RETURN_VALUE;
+        }
     }
 
     public function loadSymbol(Symbol $symbol): void

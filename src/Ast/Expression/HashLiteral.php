@@ -2,13 +2,14 @@
 
 namespace Monkey\Ast\Expression;
 
+use Exception;
 use Monkey\Ast\Node;
 use Monkey\Token\Token;
 
 class HashLiteral implements Expression
 {
     /**
-     * @param array<Expression[]> $pairs
+     * @param Pair[] $pairs
      */
     public function __construct(
         public Token $token,
@@ -25,8 +26,8 @@ class HashLiteral implements Expression
     {
         $pairs = [];
 
-        foreach ($this->pairs as $element) {
-            $pairs[] = "{$element[0]->string()}:{$element[1]->string()}";
+        foreach ($this->pairs as $pair) {
+            $pairs[] = "{$pair->key->string()}:{$pair->value->string()}";
         }
 
         return '{' . implode(', ', $pairs) . '}';
@@ -34,7 +35,20 @@ class HashLiteral implements Expression
 
     public function modify(callable $modifier): Node
     {
-        $this->pairs = array_map(fn (array $pair) => [$pair[0]->modify($modifier), $pair[1]->modify($modifier)], $this->pairs);
+        foreach ($this->pairs as $pair) {
+            $key = $pair->key->modify($modifier);
+            $value = $pair->value->modify($modifier);
+
+            if (!$key instanceof Expression) {
+                throw new Exception("modified node `pair.key` does not match class: got Statement, want Expression");
+            }
+            if (!$value instanceof Expression) {
+                throw new Exception("modified node `pair.value` does not match class: got Statement, want Expression");
+            }
+
+            $pair->key = $key;
+            $pair->value = $value;
+        }
 
         return $modifier($this);
     }

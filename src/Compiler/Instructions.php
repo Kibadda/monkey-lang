@@ -3,25 +3,38 @@
 namespace Monkey\Compiler;
 
 use ArrayAccess;
+use Exception;
 use Iterator;
 use Monkey\Code\Code;
 
+/**
+ * @implements ArrayAccess<int, int>
+ * @implements Iterator<int, int>
+ */
 class Instructions implements ArrayAccess, Iterator
 {
+    /** @var int[] $elements */
+    public array $elements;
+    private int $position = 0;
+
     /**
-     * @param int[] $elements
+     * @param int[]|self[] $elements
      */
-    public function __construct(
-        public array $elements,
-        private int $position = 0,
-    ) {
-        if ($this->count() > 0 && $elements[0] instanceof self) {
-            /** @var self[] $elements */
-            $this->elements = [];
-            foreach ($elements as $element) {
-                $this->merge($element);
+    public function __construct(array $elements)
+    {
+        $tmp = [];
+
+        foreach ($elements as $elem) {
+            if ($elem instanceof self) {
+                foreach ($elem as $instruction) {
+                    $tmp[] = $instruction;
+                }
+            } else {
+                $tmp[] = $elem;
             }
         }
+
+        $this->elements = $tmp;
     }
 
     public function offsetExists(mixed $offset): bool
@@ -43,9 +56,9 @@ class Instructions implements ArrayAccess, Iterator
         }
     }
 
-    public function offsetGet(mixed $offset): mixed
+    public function offsetGet(mixed $offset): int
     {
-        return $this->offsetExists($offset) ? $this->elements[$offset] : null;
+        return $this->offsetExists($offset) ? $this->elements[$offset] : -1;
     }
 
     public function rewind(): void
@@ -85,6 +98,13 @@ class Instructions implements ArrayAccess, Iterator
         return new self(array_slice($this->elements, $offset, $length));
     }
 
+    public function replace(self $instructions, int $offset = 0): void
+    {
+        foreach ($instructions as $i => $instruction) {
+            $this->elements[$offset + $i] = $instruction;
+        }
+    }
+
     public function count(): int
     {
         return count($this->elements);
@@ -96,10 +116,10 @@ class Instructions implements ArrayAccess, Iterator
 
         $i = 0;
         while ($i < $this->count()) {
-            $code = Code::tryFrom($this[$i]);
+            $code = Code::tryFrom($this->elements[$i]) ?? throw new Exception("unknown instruction code: {$this->elements[$i]}");
             $definition = $code->definition();
 
-            list($operands, $read) = $code->readOperands($this->slice($i + 1));
+            $operands = $code->readOperands($this->slice($i + 1), $read);
 
             $string .= sprintf("%04d %s\n", $i, match (true) {
                 count($definition->operandWidths) != count($operands) => 'ERROR: operand len ' . count($operands) . ' does not match defined ' . count($definition->operandWidths),

@@ -16,6 +16,7 @@ use Monkey\Ast\Expression\InfixExpression;
 use Monkey\Ast\Expression\IntegerLiteral;
 use Monkey\Ast\Expression\MacroLiteral;
 use Monkey\Ast\Expression\MatchLiteral;
+use Monkey\Ast\Expression\Pair;
 use Monkey\Ast\Expression\PrefixExpression;
 use Monkey\Ast\Expression\StringLiteral;
 use Monkey\Ast\Program;
@@ -30,26 +31,26 @@ use Monkey\Token\Type;
 
 class Parser
 {
-    /**
-     * @param string[] $errors
-     */
-    public function __construct(
-        public Lexer $lexer,
-        public ?Token $curToken = null,
-        public ?Token $peekToken = null,
-        public array $errors = [],
-    ) {
-        $this->nextToken();
-        $this->nextToken();
+    public Lexer $lexer;
+    public Token $curToken;
+    public Token $peekToken;
+    /** @var string[] $errors */
+    public array $errors = [];
+
+    public function __construct(Lexer $lexer)
+    {
+        $this->lexer = $lexer;
+        $this->curToken = $this->lexer->nextToken();
+        $this->peekToken = $this->lexer->nextToken();
     }
 
-    public function nextToken()
+    public function nextToken(): void
     {
         $this->curToken = $this->peekToken;
         $this->peekToken = $this->lexer->nextToken();
     }
 
-    public function parseProgam(): ?Program
+    public function parseProgam(): Program
     {
         $program = new Program();
 
@@ -196,18 +197,9 @@ class Parser
                 Type::EQ,
                 Type::NOT_EQ,
                 Type::LT,
-                Type::GT => call_user_func(function () use ($left) {
-                    $this->nextToken();
-                    return $this->parseInfixExpression($left);
-                }),
-                Type::LPAREN => call_user_func(function () use ($left) {
-                    $this->nextToken();
-                    return $this->parseCallExpression($left);
-                }),
-                Type::LBRACKET => call_user_func(function () use ($left) {
-                    $this->nextToken();
-                    return $this->parseIndexExpression($left);
-                }),
+                Type::GT => $this->parseInfixExpression($left),
+                Type::LPAREN => $this->parseCallExpression($left),
+                Type::LBRACKET => $this->parseIndexExpression($left),
                 default => null,
             };
 
@@ -238,6 +230,8 @@ class Parser
 
     private function parseInfixExpression(Expression $left): ?InfixExpression
     {
+        $this->nextToken();
+
         $token = $this->curToken;
 
         $precedence = $this->curPrecedence();
@@ -254,6 +248,8 @@ class Parser
 
     private function parseCallExpression(Expression $function): ?CallExpression
     {
+        $this->nextToken();
+
         $token = $this->curToken;
 
         $arguments = $this->parseExpressionList(Type::RPAREN);
@@ -267,10 +263,16 @@ class Parser
 
     private function parseIndexExpression(Expression $left): ?IndexExpression
     {
+        $this->nextToken();
+
         $token = $this->curToken;
 
         $this->nextToken();
         $index = $this->parseExpression(Precedence::LOWEST);
+
+        if ($index == null) {
+            return null;
+        }
 
         if (!$this->expectPeek(Type::RBRACKET)) {
             return null;
@@ -302,6 +304,10 @@ class Parser
 
         $this->nextToken();
         $condition = $this->parseExpression(Precedence::LOWEST);
+
+        if ($condition == null) {
+            return null;
+        }
 
         if (!$this->expectPeek(Type::RPAREN)) {
             return null;
@@ -383,7 +389,7 @@ class Parser
         $branches = $this->parseBranches();
 
         if ($branches == null) {
-            return $branches;
+            return null;
         }
 
         $default = null;
@@ -410,6 +416,9 @@ class Parser
         return new MatchLiteral($token, $subject, $branches, $default);
     }
 
+    /**
+     * @return null|Branch[]
+     */
     private function parseBranches(): ?array
     {
         if ($this->peekTokenIs(Type::RBRACE)) {
@@ -449,6 +458,9 @@ class Parser
         return $branches;
     }
 
+    /**
+     * @return null|Identifier[]
+     */
     private function parseFunctionParameters(): ?array
     {
         if ($this->peekTokenIs(Type::RPAREN)) {
@@ -505,6 +517,10 @@ class Parser
             $this->nextToken();
             $key = $this->parseExpression(Precedence::LOWEST);
 
+            if ($key == null) {
+                return null;
+            }
+
             if (!$this->expectPeek(Type::COLON)) {
                 return null;
             }
@@ -513,7 +529,11 @@ class Parser
 
             $value = $this->parseExpression(Precedence::LOWEST);
 
-            $pairs[] = [$key, $value];
+            if ($value == null) {
+                return null;
+            }
+
+            $pairs[] = new Pair($key, $value);
 
             if (!$this->peekTokenIs(Type::RBRACE) && !$this->expectPeek(Type::COMMA)) {
                 return null;
@@ -527,6 +547,9 @@ class Parser
         return new HashLiteral($token, $pairs);
     }
 
+    /**
+     * @return null|Expression[]
+     */
     private function parseExpressionList(Type $end): ?array
     {
         if ($this->peekTokenIs($end)) {
@@ -536,14 +559,26 @@ class Parser
 
         $this->nextToken();
 
-        $list = [
-            $this->parseExpression(Precedence::LOWEST),
-        ];
+        $list = [];
+
+        $expression = $this->parseExpression(Precedence::LOWEST);
+
+        if ($expression == null) {
+            return null;
+        }
+
+        $list[] = $expression;
 
         while ($this->peekTokenIs(Type::COMMA)) {
             $this->nextToken();
             $this->nextToken();
-            $list[] = $this->parseExpression(Precedence::LOWEST);
+            $expression = $this->parseExpression(Precedence::LOWEST);
+
+            if ($expression == null) {
+                return null;
+            }
+
+            $list[] = $expression;
         }
 
         if (!$this->expectPeek($end)) {
@@ -565,7 +600,7 @@ class Parser
     {
         return new IntegerLiteral(
             $this->curToken,
-            $this->curToken->literal,
+            intval($this->curToken->literal),
         );
     }
 
@@ -608,12 +643,12 @@ class Parser
         return $this->curToken->type->precedence();
     }
 
-    private function peekError(Type $type)
+    private function peekError(Type $type): void
     {
         $this->errors[] = "expected next token to be {$type->name}, got {$this->peekToken->type->name} instead";
     }
 
-    private function noPrefixParseFnError(Type $type)
+    private function noPrefixParseFnError(Type $type): void
     {
         $this->errors[] = "no prefix parse function for {$type->name} found";
     }

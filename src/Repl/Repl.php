@@ -25,7 +25,7 @@ class Repl
              `._ `-=-´ _.´
                 `-----´';
 
-    public static function start()
+    public static function start(): void
     {
         fwrite(STDOUT, "Hello! This is the Monkey programming language!\nFeel free to type in commands\n");
 

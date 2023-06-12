@@ -16,7 +16,6 @@ use Monkey\Object\EvalInteger;
 use Monkey\Object\EvalNull;
 use Monkey\Object\EvalObject;
 use Monkey\Object\EvalString;
-use Monkey\Object\EvalType;
 use Monkey\Object\HashKey;
 
 class VM
@@ -45,6 +44,9 @@ class VM
 
     public Builtins $builtins;
 
+    /**
+     * @param EvalObject[] $globals
+     */
     public function __construct(Compiler $compiler, array $globals = [])
     {
         $mainFunction = new EvalCompiledFunction($compiler->currentInstructions(), 0, 0);
@@ -63,7 +65,7 @@ class VM
         $this->builtins = new Builtins();
     }
 
-    public function stackTop(): EvalObject
+    public function stackTop(): ?EvalObject
     {
         return $this->sp == 0 ? null : $this->stack[$this->sp - 1];
     }
@@ -90,20 +92,21 @@ class VM
                     $right = $this->pop();
                     $left = $this->pop();
 
-                    match (true) {
-                        $left->type() == EvalType::INTEGER && $right->type() == EvalType::INTEGER => $this->push(new EvalInteger(match ($code) {
+                    if ($left instanceof EvalInteger && $right instanceof EvalInteger) {
+                        $this->push(new EvalInteger(match ($code) {
                             Code::ADD => $left->value + $right->value,
                             Code::SUB => $left->value - $right->value,
                             Code::MUL => $left->value * $right->value,
                             Code::DIV => $left->value / $right->value,
-                            default => throw new Exception("unknown integer operator: {$code->name}"),
-                        })),
-                        $left->type() == EvalType::STRING && $right->type() == EvalType::STRING => $this->push(new EvalString(match ($code) {
+                        }));
+                    } else if ($left instanceof EvalString && $right instanceof EvalString) {
+                        $this->push(new EvalString(match ($code) {
                             Code::ADD => $left->value . $right->value,
                             default => throw new Exception("unknown string operator: {$code->name}"),
-                        })),
-                        default => throw new Exception("unsupported types for binary operation: {$left->type()->name} {$right->type()->name}"),
-                    };
+                        }));
+                    } else {
+                        throw new Exception("unsupported types for binary operation: {$left->type()->name} {$right->type()->name}");
+                    }
                 }),
                 Code::POP => $this->pop(),
                 Code::TRUE => $this->push($this->true),
@@ -114,18 +117,19 @@ class VM
                     $right = $this->pop();
                     $left = $this->pop();
 
-                    $result = match (true) {
-                        $left->type() == EvalType::INTEGER && $right->type() == EvalType::INTEGER => match ($code) {
+                    if ($left instanceof EvalInteger && $right instanceof EvalInteger) {
+                        $result = match ($code) {
                             Code::EQUAL => $left->value == $right->value,
                             Code::NOT_EQUAL => $left->value != $right->value,
                             Code::GREATER_THAN => $left->value > $right->value,
-                        },
-                        default => match ($code) {
+                        };
+                    } else {
+                        $result = match ($code) {
                             Code::EQUAL => $left == $right,
                             Code::NOT_EQUAL => $left != $right,
                             default => throw new Exception("unknown operator: {$code->name} ({$left->type()->name} {$right->type()->name})"),
-                        },
-                    };
+                        };
+                    }
 
                     $this->push($result ? $this->true : $this->false);
                 }),
@@ -143,7 +147,7 @@ class VM
                 Code::MINUS => call_user_func(function () {
                     $operand = $this->pop();
 
-                    if ($operand->type() != EvalType::INTEGER) {
+                    if (!$operand instanceof EvalInteger) {
                         throw new Exception("unsupported type for negation: {$operand->type()->name}");
                     }
 
@@ -221,7 +225,7 @@ class VM
                     $index = $this->pop();
                     $left = $this->pop();
 
-                    if ($left->type() == EvalType::ARRAY && $index->type() == EvalType::INTEGER) {
+                    if ($left instanceof EvalArray && $index instanceof EvalInteger) {
                         $i = $index->value;
                         $max = count($left->elements) - 1;
 
@@ -230,7 +234,7 @@ class VM
                         } else {
                             $this->push($left->elements[$i]);
                         }
-                    } else if ($left->type() == EvalType::HASH) {
+                    } else if ($left instanceof EvalHash) {
                         if (!$index instanceof HashKey) {
                             throw new Exception("unusable as hash key: {$index->type()->name}");
                         }
@@ -342,7 +346,7 @@ class VM
 
     public function push(?EvalObject $evalObject): void
     {
-        if ($this->sp >= self::STACK_SIZE) {
+        if ($this->sp >= self::STACK_SIZE || $evalObject == null) {
             throw new Exception('stack overflow');
         }
 

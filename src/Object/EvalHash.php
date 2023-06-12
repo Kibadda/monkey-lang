@@ -5,7 +5,7 @@ namespace Monkey\Object;
 class EvalHash implements EvalObject
 {
     /**
-     * @param array<string, Expression[]> $pairs
+     * @param array<string, EvalObject> $pairs
      */
     public function __construct(
         public array $pairs,
@@ -21,9 +21,9 @@ class EvalHash implements EvalObject
     {
         $pairs = [];
 
-        foreach ($this->pairs as $index => $pair) {
+        foreach ($this->pairs as $index => $value) {
             list(, $key) = explode(':', $index);
-            $pairs[] = "{$key}: {$pair[1]->inspect()}";
+            $pairs[] = "{$key}: {$value->inspect()}";
         }
 
         return '{' . implode(', ', $pairs) . '}';

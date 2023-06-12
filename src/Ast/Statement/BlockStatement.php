@@ -2,6 +2,7 @@
 
 namespace Monkey\Ast\Statement;
 
+use Exception;
 use Monkey\Ast\Node;
 use Monkey\Token\Token;
 
@@ -34,7 +35,18 @@ class BlockStatement implements Statement
 
     public function modify(callable $modifier): Node
     {
-        $this->statements = array_map(fn (Statement $statement) => $statement->modify($modifier), $this->statements);
+        $statements = [];
+        foreach ($this->statements as $statement) {
+            $stmt = $statement->modify($modifier);
+
+            if (!$stmt instanceof Statement) {
+                throw new Exception("modified node `statement` does not match class: got Expression, want Statement");
+            }
+
+            $statements[] = $stmt;
+        }
+
+        $this->statements = $statements;
 
         return $modifier($this);
     }
