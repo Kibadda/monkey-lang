@@ -213,7 +213,11 @@ class Compiler
                 $this->changeOperand($jumpNotTruthyPosition, $afterConsequencePosition);
             }
 
-            $this->emit(Code::NULL);
+            if ($node->default != null) {
+                $this->compile($node->default);
+            } else {
+                $this->emit(Code::NULL);
+            }
 
             $afterBranchesPosition = $this->currentInstructions()->count();
             foreach ($endJumps as $jump) {

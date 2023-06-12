@@ -38,6 +38,7 @@ it('tokenizes input', function () {
         match (a) {
             1 -> true,
             "one" -> 2,
+            ? -> "default"
         };
     ';
 
@@ -157,6 +158,9 @@ it('tokenizes input', function () {
         new Token(Type::ARROW, '->'),
         new Token(Type::INT, '2'),
         new Token(Type::COMMA, ','),
+        new Token(Type::QUESTION, '?'),
+        new Token(Type::ARROW, '->'),
+        new Token(Type::STRING, 'default'),
         new Token(Type::RBRACE, '}'),
         new Token(Type::SEMICOLON, ';'),
         new Token(Type::EOF, ''),

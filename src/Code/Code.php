@@ -2,7 +2,6 @@
 
 namespace Monkey\Code;
 
-use Exception;
 use Monkey\Compiler\Instructions;
 
 enum Code: int

@@ -336,6 +336,11 @@ class Evaluator
                 }
             }
 
+            if ($node->default != null) {
+                $default = $this->eval($node->default);
+                return $default;
+            }
+
             return $this->singletons[null];
         } else {
             return null;

@@ -133,6 +133,8 @@ it('runs correctly', function (string $input, $expected) {
     ['match (true) { 1 > 2 -> 2, 1 < 2 -> 1 }', [EvalInteger::class, 1]],
     ['match (1) { 2 -> 1 }', [EvalNull::class]],
     ['match (5 - 4) { 3 - 2 -> 1 + 1 }', [EvalInteger::class, 2]],
+    ['match (true) { true -> 1, ? -> 2 }', [EvalInteger::class, 1]],
+    ['match (false) { true -> 1, ? -> 2 }', [EvalInteger::class, 2]],
     ['match (fn() { true }()) { 1 != 2 -> 1 + 1 }', [EvalInteger::class, 2]],
     ['len("")', [EvalInteger::class, 0]],
     ['len("four")', [EvalInteger::class, 4]],

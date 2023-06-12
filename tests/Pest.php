@@ -193,7 +193,7 @@ expect()->extend('toBeMacroLiteral', function (array $parameters, array $body) {
     }
 });
 
-expect()->extend('toBeMatchLiteral', function (array $subject, array $branches) {
+expect()->extend('toBeMatchLiteral', function (array $subject, array $branches, $default) {
     expect($this->value)->toBeInstanceOf(MatchLiteral::class);
     expect($this->value->subject)->toBeInstanceOf($subject[0]);
     expect($this->value->subject->value)->toBe($subject[1]);
@@ -201,6 +201,11 @@ expect()->extend('toBeMatchLiteral', function (array $subject, array $branches) 
     foreach ($this->value->branches as $i => $branch) {
         expect($branch->condition)->toBeExpression(...$branches[$i][0]);
         expect($branch->consequence)->toBeExpression(...$branches[$i][1]);
+    }
+    if ($default == null) {
+        expect($this->value->default)->toBeNull();
+    } else {
+        expect($this->value->default)->toBeExpression(...$default);
     }
 });
 

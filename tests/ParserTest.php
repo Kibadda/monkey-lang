@@ -253,7 +253,7 @@ it('parses macros', function () {
 });
 
 it('parses match', function () {
-    $program = createProgram('match (a) { 1 -> true, "one" -> 2 + 2, };');
+    $program = createProgram('match (a) { 1 -> true, "one" -> 2 + 2, ? -> "default" };');
     expect($program->statements[0])->toBeExpressionStatement(
         MatchLiteral::class,
         [Identifier::class, 'a'],
@@ -261,6 +261,7 @@ it('parses match', function () {
             [[IntegerLiteral::class, 1], [Boolean::class, true]],
             [[StringLiteral::class, 'one'], [InfixExpression::class, [IntegerLiteral::class, 2], '+', [IntegerLiteral::class, 2]]],
         ],
+        [StringLiteral::class, 'default'],
     );
 });
 

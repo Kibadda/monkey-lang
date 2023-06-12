@@ -90,6 +90,8 @@ it('evaluates', function ($input, $eval, $value) {
     'array 1' => ['[1, 2 * 2, 3 + 3]', EvalArray::class, [1, 4, 6]],
     'hash 1' => ['{"one": 10 - 9, 2: true, false: "thr" + "ee"}', EvalHash::class, ['STRING:one' => 1, 'INTEGER:2' => true, 'BOOLEAN:false' => 'three']],
     'match 1' => ['match (3 - 4) { 2 -> "two", 2 - 1 -> "one", 9 - 10 -> "minus" + "one" }', EvalString::class, 'minusone'],
+    'match 2' => ['match (true) { false -> "two", ? -> "three" }', EvalString::class, 'three'],
+    'match 3' => ['match (true) { true -> "two", ? -> "three" }', EvalString::class, 'two'],
 ]);
 
 it('handles errors', function ($input, $error) {
@@ -157,7 +159,7 @@ it('evaluates builtin functions', function ($input, $eval, $value) {
     'len 1' => ['len("")', EvalInteger::class, 0],
     'len 2' => ['len("four")', EvalInteger::class, 4],
     'len 3' => ['len("hello world")', EvalInteger::class, 11],
-    'len 4' => ['len(1)', EvalError::class, 'argument to `len` not supported, got INTEGER'],
+    'len 4' => ['len(1)', EvalError::class, 'argument to `len` not supported: got INTEGER'],
     'len 5' => ['len("one", "two")', EvalError::class, 'wrong number of arguments: got 2, wanted 1'],
 ]);
 

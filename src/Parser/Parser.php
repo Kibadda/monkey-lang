@@ -386,7 +386,28 @@ class Parser
             return $branches;
         }
 
-        return new MatchLiteral($token, $subject, $branches);
+        $default = null;
+        if ($this->peekTokenIs(Type::QUESTION)) {
+            $this->nextToken();
+
+            if (!$this->expectPeek(Type::ARROW)) {
+                return null;
+            }
+
+            $this->nextToken();
+
+            $default = $this->parseExpression(Precedence::LOWEST);
+
+            if ($default == null) {
+                return $default;
+            }
+        }
+
+        if (!$this->expectPeek(Type::RBRACE)) {
+            return null;
+        }
+
+        return new MatchLiteral($token, $subject, $branches, $default);
     }
 
     private function parseBranches(): ?array
@@ -398,7 +419,7 @@ class Parser
 
         $branches = [];
 
-        while (!$this->peekTokenIs(Type::RBRACE)) {
+        while (!$this->peekTokenIs(Type::RBRACE) && !$this->peekTokenIs(Type::QUESTION)) {
             $this->nextToken();
             $condition = $this->parseExpression(Precedence::LOWEST);
 
@@ -423,10 +444,6 @@ class Parser
             if ($this->peekTokenIs(Type::COMMA)) {
                 $this->nextToken();
             }
-        }
-
-        if (!$this->expectPeek(Type::RBRACE)) {
-            return null;
         }
 
         return $branches;

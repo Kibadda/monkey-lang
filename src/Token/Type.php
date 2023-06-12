@@ -35,6 +35,7 @@ enum Type
     case RBRACKET;
     case COLON;
     case ARROW;
+    case QUESTION;
 
     case FUNCTION;
     case LET;

@@ -14,6 +14,7 @@ class MatchLiteral implements Expression
         public Token $token,
         public Expression $subject,
         public array $branches,
+        public ?Expression $default,
     ) {
     }
 
@@ -30,7 +31,7 @@ class MatchLiteral implements Expression
             $branches[] = "{$branch->condition->string()} -> {$branch->consequence->string()},";
         }
 
-        return "{$this->tokenLiteral()} ({$this->subject->string()}) {\n" . implode("\n", $branches) . "\n}";
+        return "{$this->tokenLiteral()} ({$this->subject->string()}) {\n" . implode("\n", $branches) . ($this->default ? "\n? -> {$this->default->string()}" : '') . "\n}";
     }
 
     public function modify(callable $modifier): Node

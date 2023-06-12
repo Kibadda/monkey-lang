@@ -145,6 +145,7 @@ class Lexer
             '[' => new Token(Type::LBRACKET, $this->ch),
             ']' => new Token(Type::RBRACKET, $this->ch),
             ':' => new Token(Type::COLON, $this->ch),
+            '?' => new Token(Type::QUESTION, $this->ch),
             '' => new Token(Type::EOF, $this->ch),
             default => new Token(Type::ILLEGAL, $this->ch),
         };
