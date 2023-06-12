@@ -1,6 +1,6 @@
 # monkey-lang
 
-[Writing An Interpreter In Go](https://interpreterbook.com/) but in PHP.
+[Writing An Interpreter In Go](https://interpreterbook.com/)/[Writing A Compiler In Go](https://compilerbook.com/) but in PHP.
 
 ## Usage:
 ```sh
