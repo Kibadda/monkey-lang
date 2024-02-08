@@ -15,6 +15,12 @@ let printBookName = fn(book) {
 
 printBookName(book);
 
+puts(match(15 - 5) {
+  2 * 2 -> "Nicht richtig",
+  8 + 2 -> "richtig",
+  ? -> "default"
+})
+
 let fibonacci = fn(x) {
   if (x == 0) {
     0
